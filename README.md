@@ -1,6 +1,6 @@
 # happy-code
 
-A guided, Thai-speaking development pipeline for Claude Code, plus two ClickUp ticket skills.
+A guided, Thai-speaking development pipeline for Claude Code, plus two ticket skills.
 
 ## Install
 
@@ -18,9 +18,10 @@ claude plugin install happy-code@4chaa
 |---|---|
 | `/happy-code` | Runs one development task end-to-end, solo (no subagents): adhd+caveman output style → grill → spec → tracer-bullet tickets → impact analysis → confirm gate → laziest working implementation (ponytail) → two-stage self-review → test cases via tdd → atomic commit → keep the branch as-is. Replies in Thai. |
 | `/to-ticket` | Creates a ClickUp task or subtask from any content (email, chat, screenshot, work notes) — asks for the List, task level, parent and extra fields first, and copies the naming pattern from that List's existing tasks. |
-| `/pick-ticket` | Takes a ClickUp task id or URL, reads the task with its custom fields, subtasks and comments, confirms the brief with you, then hands it to `/happy-code` to implement. |
+| `/pick-ticket` | Takes a ticket id or URL — a ClickUp task, a GitHub issue, or anything else you can reach or paste in — reads it in full with its metadata and comments, confirms the brief with you, then hands it to `/happy-code` to implement. |
 
-`/to-ticket` and `/pick-ticket` need a connected ClickUp MCP server.
+`/to-ticket` needs a connected ClickUp MCP server. `/pick-ticket` uses whatever it can reach —
+a ClickUp or GitHub MCP server, the `gh` CLI, a public issue page, or content you paste in.
 
 ## Requirements
 
