@@ -1,0 +1,24 @@
+{
+  "name": "happy-code",
+  "version": "1.0.0",
+  "description": "Guided solo pipeline for one development task end-to-end — grill, spec, tracer-bullet tickets, impact analysis, confirm gate, laziest working implementation, self-review — plus ClickUp ticket create and pick-up skills. Replies in Thai.",
+  "author": {
+    "name": "aphichit-k",
+    "url": "https://github.com/4Chaa"
+  },
+  "homepage": "https://github.com/4Chaa/happy-code",
+  "repository": "https://github.com/4Chaa/happy-code",
+  "license": "MIT",
+  "keywords": [
+    "engineering",
+    "workflow",
+    "thai",
+    "clickup",
+    "ponytail"
+  ],
+  "skills": [
+    "./skills/happy-code",
+    "./skills/to-ticket",
+    "./skills/pick-ticket"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "4chaa",
+  "owner": {
+    "name": "aphichit-k",
+    "url": "https://github.com/4Chaa"
+  },
+  "description": "happy-code — a guided, Thai-speaking development pipeline for Claude Code, with ClickUp ticket skills.",
+  "plugins": [
+    {
+      "name": "happy-code",
+      "source": "./",
+      "description": "Guided solo pipeline for one development task end-to-end, plus ClickUp ticket create and pick-up skills.",
+      "category": "engineering",
+      "keywords": [
+        "engineering",
+        "workflow",
+        "thai",
+        "clickup",
+        "ponytail"
+      ]
+    }
+  ]
+}
