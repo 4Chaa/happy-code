@@ -1,6 +1,6 @@
 {
   "name": "happy-code",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Guided solo pipeline for one development task end-to-end — grill, spec, tracer-bullet tickets, impact analysis, confirm gate, laziest working implementation, self-review — plus skills to create a ClickUp ticket and to pick up an existing ticket from ClickUp, GitHub or elsewhere. Replies in Thai.",
   "author": {
     "name": "aphichit-k",
