@@ -37,9 +37,8 @@ command คงรูปเดิม (ไม่แปล). คงไว้จน�
 ### 1. Output style first — REQUIRED, before anything else
 Two skills, in this order, before the grill and before any exploration:
 
-**1a. `i-have-adhd`** — invoke it first (`Skill` tool, name `i-have-adhd:i-have-adhd`;
-it is `disable-model-invocation`, so it only loads when explicitly invoked). Shapes every
-response for the rest of the run: lead with the next action, number multi-step work,
+**1a. `i-have-adhd`** — invoke it first (`Skill` tool, name `i-have-adhd:i-have-adhd`). Shapes
+every response for the rest of the run: lead with the next action, number multi-step work,
 restate state across turns, no tangents, specific time estimates, visible wins.
 
 **1b. `caveman`** — then switch YOUR OWN communication to caveman style **in Thai** and
@@ -63,15 +62,22 @@ Invoke `mattpocock-skills:grill-with-docs`. Interview the user about the task un
 - Resolve every design branch and dependency before writing any code.
 
 ### 2b. Spec — `mattpocock-skills:to-spec`
-Grill จบ → invoke `mattpocock-skills:to-spec` (Skill tool; skill นี้ `disable-model-invocation`
-ต้องเรียกเอง). สังเคราะห์จากสิ่งที่ grill ไปแล้ว — **ห้าม interview ซ้ำ**.
+Grill จบ → โหลด `to-spec` ด้วยการอ่านไฟล์ตรง ๆ แล้วทำตามเหมือน invoke. skill นี้ตั้ง
+`disable-model-invocation: true` → Skill tool เรียกไม่ได้ ไม่ต้องลอง:
+1. Glob `*/mattpocock-skills/*/skills/engineering/to-spec/SKILL.md` ใน `~/.claude/plugins/cache/`
+   — เจอหลาย version → ใช้ version สูงสุด.
+2. Read ไฟล์นั้นแล้วทำตาม instruction ในไฟล์.
+3. หาไม่เจอ → บอก user หนึ่งบรรทัดว่าไม่ได้ติดตั้ง `mattpocock-skills` แล้วเขียน spec ตาม template ด้านล่างเอง.
+
+สังเคราะห์จากสิ่งที่ grill ไปแล้ว — **ห้าม interview ซ้ำ**.
 - ใช้ template ของ skill ครบทุกหัวข้อ: Problem / Solution / User Stories /
   Implementation Decisions / Testing Decisions / Out of Scope / Further Notes.
 - ไม่มี issue tracker ต่อไว้ → เขียนลงไฟล์ `.scratch/<feature-slug>/spec.md` แทน publish.
 - สรุป spec ให้ user (ไทย, caveman) แล้วรอ confirm ก่อนไปขั้นต่อไป.
 
 ### 2c. Tickets — `mattpocock-skills:to-tickets` → **แสดงเป็นตาราง**
-ต่อจาก spec invoke `mattpocock-skills:to-tickets`. แตกงานเป็น tracer-bullet vertical slice
+ต่อจาก spec โหลด `to-tickets` แบบเดียวกับ 2b (Glob `.../skills/engineering/to-tickets/SKILL.md`
+→ Read → ทำตาม; skill นี้ก็ `disable-model-invocation`). แตกงานเป็น tracer-bullet vertical slice
 พร้อม blocking edges ตาม rule ของ skill นั้น (wide refactor = expand–contract).
 
 **REQUIRED: แสดง breakdown เป็นตาราง markdown** ก่อนถาม user — ห้ามเป็น bullet ยาว:

@@ -30,8 +30,9 @@ a ClickUp or GitHub MCP server, the `gh` CLI, a public issue page, or content yo
 - plugins: [`mattpocock-skills`](https://github.com/mattpocock/skills) (`grill-with-docs`, `to-spec`, `to-tickets`, `tdd`), [`ponytail`](https://github.com/DietrichGebert/ponytail), `i-have-adhd`
 - skills: `caveman`, `finishing-a-development-branch`
 
-`to-spec` and `to-tickets` are `disable-model-invocation` — you run them yourself when the
-pipeline reaches step 2b/2c.
+`to-spec` and `to-tickets` are `disable-model-invocation`, so the Skill tool can't load them.
+At step 2b/2c `/happy-code` reads their `SKILL.md` straight from the plugin cache
+(`~/.claude/plugins/cache/*/mattpocock-skills/`) and follows it — no need to type them yourself.
 
 ## License
 
