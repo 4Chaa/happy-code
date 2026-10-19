@@ -2,9 +2,10 @@
 name: happy-code
 description: >
   Standard guided pipeline for executing one development task end-to-end, solo —
-  no subagents: switch to i-have-adhd + caveman output style first, then grill-with-docs to lock the design,
+  no subagents: switch to i-have-adhd + caveman output style first, then grill-with-docs to lock the design
+  (every choice shown with an example result — sample data, flow or diagram),
   to-spec + to-tickets to turn it into a spec and a table of tracer-bullet tickets,
-  an impact analysis + explicit confirm gate, then implement the laziest working
+  an impact analysis drawn as a flow with diagram-design + explicit confirm gate, then implement the laziest working
   solution (ponytail) yourself with self-run spec+quality review gates and test cases
   derived via tdd, asking the user back on every real decision, committing atomically,
   and finishing by keeping the branch as-is. Code may improve on the existing codebase
@@ -17,13 +18,15 @@ description: >
 
 Orchestrated pipeline for one development task, executed **solo — no subagents, no Agent/Task
 dispatch at any step**. Announce at start (in Thai):
-"ใช้ happy-code: adhd+caveman → grill → spec → tickets (ตาราง) → impact analysis → confirm → build เอง (ponytail) → self-review spec+quality → ถามทุก decision → test-case (tdd) → คง branch ไว้"
+"ใช้ happy-code: adhd+caveman → grill (ตัวเลือกมีตัวอย่าง) → spec → tickets (ตาราง) → impact analysis (flow) → confirm → build เอง (ponytail) → self-review spec+quality → ถามทุก decision → test-case (tdd) → คง branch ไว้"
 
 This skill chains existing skills — invoke them, don't reinvent them:
 `i-have-adhd` → `caveman` → `mattpocock-skills:grill-with-docs` → `mattpocock-skills:to-spec`
 → `mattpocock-skills:to-tickets` → `finishing-a-development-branch`,
 with `tdd` applied whenever test / verification cases are devised (step 4),
-and `ponytail` governing every line of code written (step 4 — laziest solution that works).
+`ponytail` governing every line of code written (step 4 — laziest solution that works),
+and `diagram-design:diagram-design` drawing every flow / picture (grill choices in step 2,
+impact analysis in step 3).
 
 ## Language — REQUIRED, ทั้ง flow
 ตอบ user เป็น **ภาษาไทย** เสมอ — grill questions, confirm gate, สรุป, status, red-flag
@@ -60,6 +63,21 @@ Invoke `mattpocock-skills:grill-with-docs`. Interview the user about the task un
 - Explore the codebase to answer questions yourself instead of asking the user.
 - One question at a time; always give a recommended answer first.
 - Resolve every design branch and dependency before writing any code.
+
+**REQUIRED: คำถามที่มีตัวเลือก → ทุกตัวเลือกต้องมีตัวอย่างผลลัพธ์ให้เห็นภาพ** ว่าเลือกแล้ว
+ได้อะไร — ห้ามมีแค่คำอธิบายนามธรรม. เลือกรูปแบบตามสิ่งที่ตัวเลือกต่างกัน:
+- **ข้อมูล / output ต่างกัน** → ตัวอย่างข้อมูลจริงของแต่ละตัวเลือก: แถวตาราง, JSON response,
+  ค่าที่ขึ้นบนจอ, ข้อความใน report. ใช้ค่าสมจริงจาก domain/codebase ไม่ใช่ `foo`/`bar`.
+- **flow / ลำดับขั้นต่างกัน** → flow สั้นต่อตัวเลือก (`A → B → C`).
+- **UI / layout ต่างกัน** → mockup ASCII ของหน้าจอ.
+
+ใส่ตัวอย่างใน field `preview` ของแต่ละ option ใน `AskUserQuestion` (สั้น ≤ ~15 บรรทัด);
+ถามเป็นข้อความธรรมดา → code block ใต้แต่ละตัวเลือก.
+ตัวเลือกต่างกันที่ **โครงสร้าง** (flow หลาย branch, layer, data model) จนข้อความไม่พอ →
+วาดภาพเทียบด้วย `diagram-design:diagram-design` — หนึ่งไฟล์ ตัวเลือกละ panel (A vs B),
+type ตามตาราง step 3. เก็บที่ `.scratch/<feature-slug>/diagrams/grill-<topic>.html`, แสดงแบบเดียวกับ
+step 3, ส่งภาพก่อนแล้วค่อยถาม `AskUserQuestion` (preview ย่อของแต่ละ panel). คำถามปลายเปิด
+หรือ yes/no ที่ไม่มีผลลัพธ์ต่างกันให้ดู → ไม่ต้องมี preview.
 
 ### 2b. Spec — `mattpocock-skills:to-spec`
 Grill จบ → โหลด `to-spec` ด้วยการอ่านไฟล์ตรง ๆ แล้วทำตามเหมือน invoke. skill นี้ตั้ง
@@ -109,6 +127,26 @@ Report as: **จุดกระทบ → ความเสี่ยง → แ
 first (e.g. narrow-scope change vs shared-code change + fix all callers). Zero impact
 outside the task = say so in one line.
 
+**REQUIRED: วาดผลวิเคราะห์เป็น flow ให้เห็นภาพ** — ใช้ `diagram-design:diagram-design`
+(Skill tool) วาดก่อนสรุป confirm. เลือก type ตามสิ่งที่วิเคราะห์ ไม่เกิน 2 ภาพ:
+
+| วิเคราะห์อะไร | type |
+|---|---|
+| logic / เงื่อนไขที่เปลี่ยน | Flowchart |
+| request ข้าม layer (UI → controller → service → DB) | Sequence |
+| blast radius — ใครเรียกของที่แก้ | Dependency graph |
+| โครงสร้างก่อน vs หลังแก้ | Architecture delta |
+| เปลี่ยน table / column | Database schema |
+
+- node ที่แก้ = accent (coral), node ที่กระทบแต่ไม่แก้ = ปกติ + label ความเสี่ยง. ≤ 9 node ต่อภาพ.
+- type + content ถูกกำหนดจาก step นี้แล้ว → ข้าม pause "confirm before drawing" ของ
+  diagram-design: บอก type หนึ่งบรรทัดแล้ววาดเลย. style-guide gate ครั้งแรก → แนะนำ (e) keep default.
+- เก็บไฟล์ที่ `.scratch/<feature-slug>/diagrams/impact-<n>.html` แล้วแสดงให้ user เห็น:
+  มี `SendUserFile` → ส่ง `display: "render"`; ไม่มี → บอก path ให้เปิดใน browser.
+- ไม่ได้ติดตั้ง diagram-design → บอกหนึ่งบรรทัด แล้ววาด Mermaid code block ใน chat แทน.
+- **ponytail escape hatch:** task "1 ticket, ไม่แตก" + zero impact นอก task → flow ข้อความ
+  บรรทัดเดียวใน chat พอ (`A → B → C`), ไม่ต้องเปิด diagram-design.
+
 **Think about testing here too — part of the analysis, not deferred to step 4.** While
 mapping the blast radius, enumerate the test/verification strategy: what proves the change
 works, what would FAIL if the logic regressed (happy path, originally-reported case,
@@ -120,7 +158,7 @@ signs off on the test plan, not just the code plan.
 code differently from the surrounding pattern, it goes in the confirm summary, not as a
 surprise in the diff.
 
-Then summarize the locked plan (code + test strategy + any deviations) in one tight block
+Then summarize the locked plan (code + test strategy + any deviations + impact diagram) in one tight block
 and wait for an "ok"/confirm. No code before this gate.
 
 ### 4. Build — yourself, no subagents
@@ -246,6 +284,10 @@ Report the commit list and any remaining tasks.
 - Implement before the step-3 confirm gate.
 - Reach the confirm gate without an impact analysis — blast radius (own program AND
   shared/other-people's code) must be reported with แนวทาง before "ok".
+- Report the impact analysis without a flow diagram (`diagram-design`) — เว้น escape hatch
+  "1 ticket + zero impact" ที่ใช้ flow ข้อความบรรทัดเดียว.
+- Ask a grill question with choices but no example of each choice's result (sample data /
+  flow / mockup / diagram).
 - Skip the two-stage self-review, or run quality before spec passes.
 - Proceed past a user-owned decision by guessing.
 - Ship over-engineered / speculative / scaffolded-for-later code — violates `ponytail`

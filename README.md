@@ -16,7 +16,7 @@ claude plugin install happy-code@4chaa
 
 | Skill | What it does |
 |---|---|
-| `/happy-code` | Runs one development task end-to-end, solo (no subagents): adhd+caveman output style → grill → spec → tracer-bullet tickets → impact analysis → confirm gate → laziest working implementation (ponytail) → two-stage self-review → test cases via tdd → atomic commit → keep the branch as-is. Replies in Thai. |
+| `/happy-code` | Runs one development task end-to-end, solo (no subagents): adhd+caveman output style → grill (every choice shown with an example result) → spec → tracer-bullet tickets → impact analysis drawn as a flow diagram → confirm gate → laziest working implementation (ponytail) → two-stage self-review → test cases via tdd → atomic commit → keep the branch as-is. Replies in Thai. |
 | `/to-ticket` | Creates a ClickUp task or subtask from any content (email, chat, screenshot, work notes) — asks for the List, task level, parent and extra fields first, and copies the naming pattern from that List's existing tasks. |
 | `/pick-ticket` | Takes a ticket id or URL — a ClickUp task, a GitHub issue, or anything else you can reach or paste in — reads it in full with its metadata and comments, confirms the brief with you, creates a fresh branch (asks for the base and name, suggests a name from the ticket if you leave it blank), then hands it to `/happy-code` to implement. |
 
@@ -27,7 +27,7 @@ a ClickUp or GitHub MCP server, the `gh` CLI, a public issue page, or content yo
 
 `/happy-code` invokes skills it does not bundle. Without them the pipeline runs degraded:
 
-- plugins: [`mattpocock-skills`](https://github.com/mattpocock/skills) (`grill-with-docs`, `to-spec`, `to-tickets`, `tdd`), [`ponytail`](https://github.com/DietrichGebert/ponytail), `i-have-adhd`
+- plugins: [`mattpocock-skills`](https://github.com/mattpocock/skills) (`grill-with-docs`, `to-spec`, `to-tickets`, `tdd`), [`ponytail`](https://github.com/DietrichGebert/ponytail), `i-have-adhd`, `diagram-design` (flow diagrams; falls back to Mermaid in chat)
 - skills: `caveman`, `finishing-a-development-branch`
 
 `to-spec` and `to-tickets` are `disable-model-invocation`, so the Skill tool can't load them.
