@@ -18,7 +18,7 @@ description: >
 
 Orchestrated pipeline for one development task, executed **solo — no subagents, no Agent/Task
 dispatch at any step**. Announce at start (in Thai):
-"ใช้ happy-code: adhd+caveman → grill (ตัวเลือกมีตัวอย่าง) → spec → tickets (ตาราง) → impact analysis (flow) → confirm → build เอง (ponytail) → self-review spec+quality → ถามทุก decision → test-case (tdd) → คง branch ไว้"
+"ใช้ happy-code: adhd+caveman → grill (โจทย์ก่อน, ตัวเลือกมีตัวอย่าง) → spec → tickets (ตาราง) → impact analysis (flow) → confirm → build เอง (ponytail) → self-review spec+quality → ถามทุก decision → test-case (tdd) → คง branch ไว้ · state.md ตลอด flow"
 
 This skill chains existing skills — invoke them, don't reinvent them:
 `i-have-adhd` → `caveman` → `mattpocock-skills:grill-with-docs` → `mattpocock-skills:to-spec`
@@ -34,6 +34,25 @@ warnings ทุกอย่าง. ผสมกับ caveman: terse Thai (ต�
 technical substance ครบ. คำเทคนิค / code / ชื่อ skill / `file:line` / error text /
 command คงรูปเดิม (ไม่แปล). คงไว้จนจบ flow หรือ user สั่ง "stop caveman" /
 "normal mode" / "ตอบอังกฤษ".
+
+## State file — REQUIRED, ทั้ง flow
+เก็บสถานะงานไว้ที่ `.scratch/<feature-slug>/state.md` เพราะ context ถูก compact หรือ hand off ได้
+ทุกเมื่อ และสรุปหลัง compact เชื่อไม่ได้ทั้งหมด. สร้างตอนเริ่ม step 2. อัปเดตทุกครั้งที่ ticket
+เปลี่ยนสถานะ, user ตัดสินใจอะไร, ก่อน commit และก่อน hand off.
+
+```markdown
+# <feature> — state
+## Tickets          | # | ticket | สถานะ (todo/doing/done) | commit |
+## Decisions        - <วันที่> <คำตัดสินใจ> (user: "<คำพูดของ user>")
+## Must not change  - <สิ่งที่ห้ามเปลี่ยน / source of truth จาก step 2>
+## Working tree     - <ไฟล์> : ของเรา / WIP ของ user / ของ session อื่น
+## Commit choice    - แยก หรือ รวม กับ WIP ของ user (step 7)
+## How to verify    - <คำสั่ง test, script, query ที่ใช้จริง>
+```
+
+- เริ่ม flow → `git status --short` แล้วบันทึกไฟล์ที่แก้ค้างอยู่แล้วว่าเป็น "WIP ของ user" ก่อนแตะอะไร.
+- หลัง compact หรือรับงานต่อ → อ่าน `state.md` และ `git status` ก่อน. ห้ามเชื่อสรุปอย่างเดียว.
+- ไฟล์อยู่ใน `.scratch/` → ไม่ commit.
 
 ## The pipeline
 
@@ -63,6 +82,13 @@ Invoke `mattpocock-skills:grill-with-docs`. Interview the user about the task un
 - Explore the codebase to answer questions yourself instead of asking the user.
 - One question at a time; always give a recommended answer first.
 - Resolve every design branch and dependency before writing any code.
+
+**REQUIRED: ถามโจทย์ก่อนเสนอทางเลือก.** คำถามแรกของ grill (ก่อนคำถามที่มีตัวเลือก) ต้องล็อก
+สิ่งที่ห้ามเปลี่ยนและ source of truth ให้ได้ก่อน เช่น "ต้องคงรหัส status เดิมไหม", "ยึด db_status
+หรือยึด function", "จอเดิมต้องได้ผลเหมือนเดิมไหม". ทางเลือกที่ขัดกับคำตอบนี้ไม่ต้องเสนอ.
+- task ที่แก้ logic เดิม → ก่อนถาม อธิบาย 3–5 บรรทัดว่าโค้ดเดิมทำงานยังไงและทำไมถึงเขียนแบบนั้น
+  (อ้าง `file:line`) เช่น ทำไม SQL เดิมต้องมี `AND` เยอะ. user เห็นภาพของเดิมก่อนจะตัดสินใจได้ถูกกว่า.
+- คำตอบเขียนลง `state.md` หัวข้อ "Must not change" และหัวข้อ Implementation Decisions ของ spec.
 
 **REQUIRED: คำถามที่มีตัวเลือก → ทุกตัวเลือกต้องมีตัวอย่างผลลัพธ์ให้เห็นภาพ** ว่าเลือกแล้ว
 ได้อะไร — ห้ามมีแค่คำอธิบายนามธรรม. เลือกรูปแบบตามสิ่งที่ตัวเลือกต่างกัน:
@@ -113,6 +139,19 @@ Grill จบ → โหลด `to-spec` ด้วยการอ่านไฟ�
 - **ponytail escape hatch:** task เล็กที่เป็น ticket เดียวชัด ๆ → บอกหนึ่งบรรทัดว่า
   "1 ticket, ไม่แตก" แล้วไปต่อ ไม่ต้องทำตาราง
 
+### 2d. Quick-fix lane — bug ระหว่างทาง / งานเล็กที่ user สั่งเพิ่ม
+ใช้แทน step 2–3 เมื่อเข้าเงื่อนไขครบทุกข้อ:
+- เป็น bug ที่ user ชี้ หรือเจอระหว่าง flow หรือเป็นงานปรับเล็ก (เช่น ความกว้างคอลัมน์ grid,
+  ค่าค้นหาหายตอนกลับจากหน้า detail);
+- แก้ไม่เกิน 1 layer และไม่เกินประมาณ 3 ไฟล์;
+- ไม่แตะ shared code, API contract หรือ DB schema;
+- ไม่มีทางเลือกที่ user ต้องตัดสินใจ (มี → ถามด้วย `AskUserQuestion` ก่อนแล้วค่อยเข้า lane).
+
+Flow: หา root cause (อ่านโค้ด + repro) → test แดง (unit test หรือ script ตาม "Verification
+recipes" ใน step 4) → แก้ → test เขียว + ตรวจบนจอ → รายงานสาเหตุ (`file:line`), สิ่งที่แก้ และผลตรวจ
+→ commit เมื่อ user สั่ง. ไม่ทำ spec, tickets หรือ impact diagram. บอกหนึ่งบรรทัดว่า "quick-fix lane".
+ไม่เข้าเงื่อนไขข้อใดข้อหนึ่ง → ใช้ full pipeline.
+
 ### 3. Impact analysis → confirm gate
 **Impact analysis FIRST — before the confirm summary, before any code.** Find the blast
 radius with grep/Glob yourself, don't guess. Cover both:
@@ -144,6 +183,12 @@ outside the task = say so in one line.
 - เก็บไฟล์ที่ `.scratch/<feature-slug>/diagrams/impact-<n>.html` แล้วแสดงให้ user เห็น:
   มี `SendUserFile` → ส่ง `display: "render"`; ไม่มี → บอก path ให้เปิดใน browser.
 - ไม่ได้ติดตั้ง diagram-design → บอกหนึ่งบรรทัด แล้ววาด Mermaid code block ใน chat แทน.
+- **ข้อความไทยในภาพ:** Geist ไม่มีตัวไทย → เพิ่ม `Noto Sans Thai` ใน Google Fonts link และในทุก
+  font stack (`'Geist','Noto Sans Thai',sans-serif`, `'Geist Mono','Noto Sans Thai',monospace`).
+  ตัวอักษรใน SVG ≥ 10px (ข้อความหลักและ legend ≥ 11px). กล่องและชิปเผื่อความกว้างประมาณ 6px
+  ต่อตัวอักษรไทยที่ 10px. วาดเสร็จรัน `scripts/self_check.py` ของ diagram-design และเปิดดูภาพจริงก่อนส่ง.
+- **นอก step 2–3:** เวลาอธิบายทางเลือก, เทียบผลก่อน/หลัง หรือตอบ "ทำไม" ที่มีโครงสร้าง (ลำดับขั้น,
+  coverage, ตัวเลขเทียบกัน) → วาดภาพเลยถ้าช่วยให้เห็นภาพ ไม่งั้นเสนอหนึ่งบรรทัดท้ายคำตอบ.
 - **ponytail escape hatch:** task "1 ticket, ไม่แตก" + zero impact นอก task → flow ข้อความ
   บรรทัดเดียวใน chat พอ (`A → B → C`), ไม่ต้องเปิด diagram-design.
 
@@ -160,6 +205,16 @@ surprise in the diff.
 
 Then summarize the locked plan (code + test strategy + any deviations + impact diagram) in one tight block
 and wait for an "ok"/confirm. No code before this gate.
+
+### 3b. Decision changed after the confirm gate
+User เปลี่ยนการตัดสินใจหรือเพิ่ม scope หลัง confirm (เช่น "ต้อง 403 ไม่ใช่ 400", "เช็คทุก action
+ด้วย") → หยุดเขียนโค้ดส่วนที่กระทบ แล้วทำ delta loop ก่อนไปต่อ:
+1. อัปเดต `spec.md` เฉพาะหัวข้อที่เปลี่ยน (Implementation Decisions, Testing Decisions, Out of Scope).
+2. อัปเดตตาราง ticket (เพิ่มหรือแก้แถว และ blocking) และ `state.md` หัวข้อ Decisions.
+3. เพิ่ม impact 1–3 บรรทัด: จุดใหม่ที่แตะ, shared code ใหม่, ความเสี่ยงใหม่. โครงไม่เปลี่ยน → ไม่ต้องวาดภาพใหม่.
+4. test case ที่เปลี่ยน → แก้ test ก่อน แล้วดูให้แดงอีกรอบ.
+5. สรุป delta เป็นก้อนเดียวไม่เกิน 5 บรรทัด แล้วรอ "ok" สั้น ๆ. user สั่ง "ทำทีเดียวเลย" ไว้แล้ว
+   → แจ้ง delta แล้วทำต่อได้ ไม่ต้องรอ.
 
 ### 4. Build — yourself, no subagents
 Write the code yourself with Read/Edit/Write. No Agent/Task dispatch, no delegation —
@@ -206,6 +261,15 @@ path and this skill forbids it.
   the red test IS the repro — it must fail before the fix and pass after. State each
   case and how it was checked (unit test, DB query, manual run) — don't hand-wave
   coverage. A test that never went red proves nothing.
+- **Verification recipes** — เลือกตามชนิดงาน. สูตรเหล่านี้นับเป็น test แดง → เขียวได้:
+
+  | งาน | วิธีพิสูจน์ |
+  |---|---|
+  | แก้ DB function / SQL logic (DB read-only สำหรับเรา) | query read-only: ดึง expression จาก script ที่จะรันจริง (ห้ามพิมพ์ซ้ำ), cross join ทุก combination ของ input แล้วเทียบเก่ากับใหม่. นับ (1) แบบที่เก่าถูกแต่ใหม่ต่าง ต้องเป็น 0 (2) แบบที่ผลไม่ valid หรือ NULL (3) แถวข้อมูลจริงที่ผลเปลี่ยน |
+  | จัด layout UI (grid, ฟอร์ม) | วัดด้วย Playwright `evaluate`: ความกว้างช่องเทียบกับความกว้างข้อความ + padding + ไอคอน และจำนวนบรรทัดต่อ cell. แนบภาพก่อน/หลัง. ห้ามกะด้วยตา |
+  | bug SPA ที่ไม่มี spec runner | Playwright repro script เป็น test แดง: assert บน state จริง (`sessionStorage`, `ng.getComponent(el).<form>.value`, response ของ API). รันก่อนแก้ (แดง) และหลังแก้ (เขียว) |
+
+  dev server ต้อง rebuild ก่อนวัด → retry จนเห็นค่าใหม่. ห้ามสรุปจากรอบที่ยังเป็นโค้ดเก่า.
 - Verify honestly at the end. **BE**: `dotnet build`. **FE (Angular)**: do NOT run
   `ng build` / `npm run build*` — too slow. Typecheck only:
   `npx tsc --noEmit -p Web/spa/src/tsconfig.app.json` (catches `.ts` errors, not
@@ -260,18 +324,39 @@ Never guess on a user-owned decision; never proceed past one.
 
 ### 7. Commit discipline
 - Atomic commit per task. Stage only that task's files.
-- When a task's changes are intermingled with unrelated or user-WIP changes in the
-  same file, stage at HUNK level (e.g. `git apply --cached` on a hunk-filtered patch)
-  so the commit stays clean and the user's WIP is left untouched. Ask first if unsure.
-- Add the project's `Co-Authored-By` trailer to work you authored; do NOT add the
-  Claude co-author trailer to the user's own changes you are merely committing.
+- When a task's changes sit in files that also hold user WIP (or another session's work),
+  ask ONCE per run with `AskUserQuestion`:
+  - **แยก (แนะนำ)** — stage at HUNK level (e.g. `git apply --cached` on a hunk-filtered patch).
+    WIP re-indents the whole file → build the index blob from `HEAD` + your edits only
+    (`git show HEAD:<file>` → apply your edits → `git hash-object -w` → `git update-index --cacheinfo`).
+  - **รวม** — commit the user's WIP together; the message describes both changes.
+  Record the answer in `state.md` (Commit choice) and reuse it for the rest of the run unless
+  the user says otherwise.
+- `Co-Authored-By` trailer: the commit holds work you wrote → add it. The commit holds only the
+  user's own changes → do NOT add it.
 - Commit when the user signals it. If they say "let me review first", present the
   diff and wait — don't auto-commit.
 
-### 8. Finish — keep the branch as-is, ALWAYS
-On completion, follow `finishing-a-development-branch` but ALWAYS choose
-"keep the branch as-is" (no merge, no PR) unless the user explicitly says otherwise.
-Report the commit list and any remaining tasks.
+### 8. Finish — keep the branch as-is, unless the user asks for a PR
+On completion, follow `finishing-a-development-branch` and choose "keep the branch as-is"
+(no merge, no PR) unless the user explicitly asks for a PR. Report the commit list and any
+remaining tasks.
+
+**User สั่ง PR / MR:**
+1. **Host:** `git remote get-url origin` แล้วเปิดหน้าเว็บดูก่อนว่าเป็นอะไร (footer, หน้า login) — ห้ามเดา URL.
+   - GitHub / GHE → `gh pr create`.
+   - GitLab → `glab mr create` หรือ `git push -o merge_request.create -o merge_request.target=<base>`.
+   - Gitea → `tea pulls create`.
+   - ไม่มี CLI → หน้าเว็บ: GitHub/Gitea `<repo>/compare/<base>...<head>`, GitLab
+     `<repo>/-/merge_requests/new?merge_request[source_branch]=<head>&merge_request[target_branch]=<base>`.
+2. **Branch:** `git fetch` แล้วเช็คว่า push ครบไหม (`git status -sb`), ahead/behind base และ
+   `git merge-tree --write-tree HEAD origin/<base>`. มี conflict → บอก user ก่อน ไม่ merge base เอง.
+3. **Description (อังกฤษ):** Summary / Features / Fixes / Refactors / Shared code touched /
+   DB scripts to run (ทุกไฟล์ใน `db/` ที่ branch เพิ่ม) / Testing (ตัวเลขจริง) + attribution line
+   ตาม system reminder. ร่างลง `.scratch/<feature-slug>/pr.md` ก่อน.
+4. **หน้าเว็บต้อง login** → ให้ user login เอง (ห้ามกรอกรหัสผ่าน) แล้วค่อยกรอก title/description และกด create.
+5. **หลังสร้าง:** รายงานลิงก์, mergeable, behind และ CI. Host เป็น GitHub → bind กับ PR tooling ของ app.
+   ห้าม merge PR เอง.
 
 ## Red flags — never
 - Dispatch a subagent (Agent/Task/workflow) anywhere in this flow — solo only.
@@ -279,7 +364,11 @@ Report the commit list and any remaining tasks.
 - Run the flow without invoking `i-have-adhd` then `caveman` at step 1.
 - Let caveman crush ADHD structure — no wall-of-text multi-step answers, no dropped
   "ต่อไปทำอะไร" line.
-- Skip `to-spec` / `to-tickets` after the grill — เว้น task เล็กที่ประกาศไว้ว่า "1 ticket, ไม่แตก".
+- Skip `to-spec` / `to-tickets` after the grill — เว้น task เล็กที่ประกาศไว้ว่า "1 ticket, ไม่แตก"
+  หรืองานที่เข้า quick-fix lane (step 2d) ครบทุกเงื่อนไข.
+- เสนอทางเลือกก่อนล็อกว่าอะไรห้ามเปลี่ยน / source of truth (step 2).
+- เขียนโค้ดต่อหลัง user เปลี่ยนการตัดสินใจหลัง confirm โดยไม่ทำ delta loop (step 3b).
+- เชื่อสรุปหลัง compact มากกว่า `state.md` + `git status`.
 - Show the ticket breakdown as anything other than a markdown table.
 - Implement before the step-3 confirm gate.
 - Reach the confirm gate without an impact analysis — blast radius (own program AND
@@ -297,8 +386,9 @@ Report the commit list and any remaining tasks.
 - Copy a broken pattern (missing company filter, unparameterized SQL, swallowed exception,
   missing `ICommand`) just because the neighbouring file does it — step 5 says fix it here.
 - Deviate from the codebase pattern for taste, or refactor code outside the blast radius.
-- Commit intermingled / unrelated / user-WIP changes together.
-- Merge or open a PR (keep branch as-is unless told otherwise).
+- Commit intermingled / unrelated / user-WIP changes together without the user's once-per-run
+  answer (step 7).
+- Open a PR the user did not ask for, or merge one (step 8).
 - Claim done without deriving test cases via `tdd` (esp. the originally-reported case
   + edge cases) for any non-trivial change, or ship a test that never went red.
 - Claim build/tests green without actually verifying (FE = `tsc --noEmit`, never a
