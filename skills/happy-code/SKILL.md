@@ -18,7 +18,7 @@ description: >
 
 Orchestrated pipeline for one development task, executed **solo — no subagents, no Agent/Task
 dispatch at any step**. Announce at start (in Thai):
-"ใช้ happy-code: adhd+caveman → grill (โจทย์ก่อน, ตัวเลือกมีตัวอย่าง) → spec → tickets (ตาราง) → impact analysis (flow) → confirm → build เอง (ponytail) → self-review spec+quality → ถามทุก decision → test-case (tdd) → คง branch ไว้ · state.md ตลอด flow"
+"ใช้ happy-code: adhd+caveman → grill (โจทย์ก่อน, ตัวเลือกมีตัวอย่าง) → spec → tickets (ตาราง) → impact analysis (flow) → confirm → build เอง (ponytail) → self-review spec+quality → ถามทุก decision → test-case (tdd) → (งาน UI: ถามก่อนเล่นจอ happy-screen-test) → คง branch ไว้ · state.md ตลอด flow"
 
 This skill chains existing skills — invoke them, don't reinvent them:
 `i-have-adhd` → `caveman` → `mattpocock-skills:grill-with-docs` → `mattpocock-skills:to-spec`
@@ -26,7 +26,8 @@ This skill chains existing skills — invoke them, don't reinvent them:
 with `tdd` applied whenever test / verification cases are devised (step 4),
 `ponytail` governing every line of code written (step 4 — laziest solution that works),
 and `diagram-design:diagram-design` drawing every flow / picture (grill choices in step 2,
-impact analysis in step 3).
+impact analysis in step 3). For UI work, `happy-code:happy-screen-test` plays the test plan on screen
+(step 7b) — only after the user says yes.
 
 ## Language — REQUIRED, ทั้ง flow
 ตอบ user เป็น **ภาษาไทย** เสมอ — grill questions, confirm gate, สรุป, status, red-flag
@@ -47,12 +48,21 @@ command คงรูปเดิม (ไม่แปล). คงไว้จน�
 ## Must not change  - <สิ่งที่ห้ามเปลี่ยน / source of truth จาก step 2>
 ## Working tree     - <ไฟล์> : ของเรา / WIP ของ user / ของ session อื่น
 ## Commit choice    - แยก หรือ รวม กับ WIP ของ user (step 7)
+## Options          - FE=BE: on / off (step 3)
 ## How to verify    - <คำสั่ง test, script, query ที่ใช้จริง>
 ```
 
 - เริ่ม flow → `git status --short` แล้วบันทึกไฟล์ที่แก้ค้างอยู่แล้วว่าเป็น "WIP ของ user" ก่อนแตะอะไร.
 - หลัง compact หรือรับงานต่อ → อ่าน `state.md` และ `git status` ก่อน. ห้ามเชื่อสรุปอย่างเดียว.
 - ไฟล์อยู่ใน `.scratch/` → ไม่ commit.
+
+## Long waits — background, never block
+อะไรที่ต้องรอนาน (build / test ชุดใหญ่, job เบื้องหลัง, import ไฟล์ใหญ่, รอ user login / restart server /
+รัน DB script) → รันด้วย `run_in_background` แล้วเฝ้าด้วย `Monitor` หรือ waiter ที่ออกเองเมื่อเงื่อนไขครบ
+(เช่น log ขึ้น "Application started" ใหม่ + query read-only เห็นค่าที่ script ตั้ง) แล้วทำขั้นต่อไปเองทันที.
+- บอก user เป็นข้อ ๆ ว่ากำลังรออะไรจากเขา และพอครบแล้วจะเกิดอะไรต่อ.
+- filter ของ monitor ต้องจับทั้งสำเร็จและพัง (`DONE|FAIL|ERROR|Traceback`) — เงียบไม่ได้แปลว่าผ่าน.
+- ห้าม `sleep` / poll ค้างใน foreground; ห้าม kill process หรือ restart server ของ user เอง.
 
 ## The pipeline
 
@@ -199,6 +209,12 @@ boundary/edge cases), and HOW each gets checked (unit test, DB query, manual run
 what's hard/impossible to test and why. Fold this into the confirm summary so the user
 signs off on the test plan, not just the code plan.
 
+**Option FE=BE — ถามครั้งเดียวต่อ run, เฉพาะงานที่มี validation ทั้ง FE และ BE** (บางโปรเจคไม่ใช้):
+`AskUserQuestion` "ให้ FE กับ BE ตรวจ field เดียวกันด้วยข้อความเดียวกันไหม?" — **on**: BE ครอบทุก rule ที่ FE
+บังคับ (required, รูปแบบ, ขนาด) ใช้ข้อความตาม convention ของระบบ (เช่น ใต้ช่อง = ข้อความสั้น, toast = ระบุชื่อช่อง)
+และทดสอบ error path ของจอจริง (interceptor ที่ toast แล้วกลืน error ทำให้ error callback ไม่ทำงาน);
+**off**: ข้าม. บันทึกที่ `state.md` → Options แล้วใช้ทั้ง run.
+
 **Flag any deviate-from-codebase call here too** (step 5) — if you intend to write the new
 code differently from the surrounding pattern, it goes in the confirm summary, not as a
 surprise in the diff.
@@ -250,7 +266,8 @@ path and this skill forbids it.
   speculative generality, one-impl interfaces, needless new deps, boilerplate, gratuitous
   method-splitting — sending it back to the lazy version. Review by reading the code — do
   NOT run a Sonar scan; the rules are the point, the scanner is not. Report both verdicts
-  to the user in one short block.
+  to the user in one short block. Option FE=BE on (step 3) → the spec pass also checks
+  every FE rule has its BE rule and message, field by field.
 - Multi-layer work (FE/BE): do the layers in sequence, one coherent edit set per layer,
   self-review each layer before moving to the next.
 - Derive test cases with `tdd` — cases BEFORE code, red → green → refactor. Enumerate
@@ -268,6 +285,7 @@ path and this skill forbids it.
   | แก้ DB function / SQL logic (DB read-only สำหรับเรา) | query read-only: ดึง expression จาก script ที่จะรันจริง (ห้ามพิมพ์ซ้ำ), cross join ทุก combination ของ input แล้วเทียบเก่ากับใหม่. นับ (1) แบบที่เก่าถูกแต่ใหม่ต่าง ต้องเป็น 0 (2) แบบที่ผลไม่ valid หรือ NULL (3) แถวข้อมูลจริงที่ผลเปลี่ยน |
   | จัด layout UI (grid, ฟอร์ม) | วัดด้วย Playwright `evaluate`: ความกว้างช่องเทียบกับความกว้างข้อความ + padding + ไอคอน และจำนวนบรรทัดต่อ cell. แนบภาพก่อน/หลัง. ห้ามกะด้วยตา |
   | bug SPA ที่ไม่มี spec runner | Playwright repro script เป็น test แดง: assert บน state จริง (`sessionStorage`, `ng.getComponent(el).<form>.value`, response ของ API). รันก่อนแก้ (แดง) และหลังแก้ (เขียว) |
+  | ข้อความบนจอ, flow หลายจอ / หลาย tab, FE กับ BE ต้องได้ข้อความเดียวกัน | `happy-code:happy-screen-test` — ถาม user ก่อน (step 7b) แล้วเล่น test plan บน Chrome ให้ user ตรวจเอง |
 
   dev server ต้อง rebuild ก่อนวัด → retry จนเห็นค่าใหม่. ห้ามสรุปจากรอบที่ยังเป็นโค้ดเก่า.
 - Verify honestly at the end. **BE**: `dotnet build`. **FE (Angular)**: do NOT run
@@ -337,6 +355,17 @@ Never guess on a user-owned decision; never proceed past one.
 - Commit when the user signals it. If they say "let me review first", present the
   diff and wait — don't auto-commit.
 
+### 7b. ทดสอบบนจอ — ถามก่อนเสมอ
+งานแตะ UI (จอ, ข้อความ, validation, import/export, job ที่จอรอผล) และ ticket ครบแล้ว → ถามด้วย
+`AskUserQuestion` หนึ่งครั้ง: "เล่น manual test บนจอด้วย happy-screen-test ไหม?" ตัวเลือก:
+- **เล่นเลย (แนะนำ)** — invoke `happy-code:happy-screen-test`. skill นั้นสร้าง manual test plan ให้ถ้ายังไม่มี
+  และแสดงตารางสรุปเคสให้อนุมัติก่อนเล่นจอเสมอ.
+- **ข้าม** — บันทึกใน `state.md` แล้วไป step 8.
+
+ระหว่างเล่น: bug ที่เจอ → quick-fix lane (2d) หรือ delta loop (3b) แล้วเล่นเคสนั้นซ้ำก่อน commit.
+ข้อมูลที่เคสเขียนลง DB ของ dev → จดใน `state.md` และรายงานตอนจบ.
+ห้ามเรียก skill นี้เองโดยไม่ถาม — user ต้องว่างนั่งดูจอและ login เอง.
+
 ### 8. Finish — keep the branch as-is, unless the user asks for a PR
 On completion, follow `finishing-a-development-branch` and choose "keep the branch as-is"
 (no merge, no PR) unless the user explicitly asks for a PR. Report the commit list and any
@@ -389,6 +418,8 @@ remaining tasks.
 - Commit intermingled / unrelated / user-WIP changes together without the user's once-per-run
   answer (step 7).
 - Open a PR the user did not ask for, or merge one (step 8).
+- Start `happy-screen-test` without asking (step 7b), or skip the ask on UI work.
+- Block the session on a long wait (`sleep`, foreground polling) instead of background + monitor.
 - Claim done without deriving test cases via `tdd` (esp. the originally-reported case
   + edge cases) for any non-trivial change, or ship a test that never went red.
 - Claim build/tests green without actually verifying (FE = `tsc --noEmit`, never a

@@ -1,7 +1,7 @@
 {
   "name": "happy-code",
   "version": "1.4.0",
-  "description": "Guided solo pipeline for one development task end-to-end — grill, spec, tracer-bullet tickets, impact analysis, confirm gate, laziest working implementation, self-review — plus skills to create a ClickUp ticket and to pick up an existing ticket from ClickUp, GitHub or elsewhere. Replies in Thai.",
+  "description": "Guided solo pipeline for one development task end-to-end — grill, spec, tracer-bullet tickets, impact analysis, confirm gate, laziest working implementation, self-review — plus skills to create a ClickUp ticket, to pick up an existing ticket from ClickUp, GitHub or elsewhere, and to play a manual UI test plan on a visible browser with an on-screen check panel. Replies in Thai.",
   "author": {
     "name": "aphichit-k",
     "url": "https://github.com/4Chaa"
@@ -15,11 +15,14 @@
     "thai",
     "clickup",
     "ponytail",
-    "github"
+    "github",
+    "playwright",
+    "manual-test"
   ],
   "skills": [
     "./skills/happy-code",
     "./skills/to-ticket",
-    "./skills/pick-ticket"
+    "./skills/pick-ticket",
+    "./skills/happy-screen-test"
   ]
 }
