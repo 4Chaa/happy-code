@@ -16,6 +16,8 @@ async function open(page, path) {
   await K.settle(page, 1200);
 }
 
+// Every step the tester would do goes through the mouse and keyboard: K.click, K.type, K.pick, K.pickTypeahead,
+// K.checkRow, K.searchRow. Never locator.click() / fill() directly, never an API call to skip a form.
 const CASES = [
   // A message the tester must judge: intro (what will happen) -> play -> verdict (expected vs actual).
   async page => {
@@ -25,9 +27,9 @@ const CASES = [
     await open(page, '/en/enpc03');
     await Q.intro(page, tc, ['เลือกไฟล์ 07', 'กด นำเข้าข้อมูล'], ['toast error "ไม่พบคอลัมน์ location_code ในไฟล์"', 'grid ไม่เปลี่ยน'], src);
     await Q.doing(page, tc, 'นำเข้าไฟล์ 07');
-    await page.locator('input[type=file]').setInputFiles(file);
+    await page.locator('input[type=file]').setInputFiles(file); // the OS file dialog cannot be driven by the mouse
     await K.dismissToasts(page);
-    await page.locator('button:has(i.fa-sync-alt)').click();
+    await K.click(page, page.locator('button:has(i.fa-sync-alt)'));
     const t = await K.toasts(page);
     await K.holdToast(page);
     await Q.verdict(page, tc, [

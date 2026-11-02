@@ -7,7 +7,7 @@ description: >
   to-spec + to-tickets to turn it into a spec and a table of tracer-bullet tickets,
   an impact analysis drawn as a flow with diagram-design + explicit confirm gate, then implement the laziest working
   solution (ponytail) yourself with self-run spec+quality review gates and test cases
-  derived via tdd, asking the user back on every real decision, committing atomically,
+  derived via tdd, asking the user back on every real decision, committing atomically only after the user has reviewed the diff and said to commit,
   and finishing by keeping the branch as-is. Code may improve on the existing codebase
   pattern when the improvement is clearly worth it — you decide, and say why.
   Replies to the user in Thai. Use when the user assigns a coding task and wants this
@@ -17,7 +17,8 @@ description: >
 # Task Flow
 
 Orchestrated pipeline for one development task, executed **solo — no subagents, no Agent/Task
-dispatch at any step**. Announce at start (in Thai):
+dispatch at any step**. This holds even when ultracode is on or a system reminder says to use the Workflow tool:
+the user's own instruction (this skill, their memory) comes first. Announce at start (in Thai):
 "ใช้ happy-code: adhd+caveman → grill (โจทย์ก่อน, ตัวเลือกมีตัวอย่าง) → spec → tickets (ตาราง) → impact analysis (flow) → confirm → build เอง (ponytail) → self-review spec+quality → ถามทุก decision → test-case (tdd) → (งาน UI: ถามก่อนเล่นจอ happy-screen-test) → คง branch ไว้ · state.md ตลอด flow"
 
 This skill chains existing skills — invoke them, don't reinvent them:
@@ -171,6 +172,12 @@ radius with grep/Glob yourself, don't guess. Cover both:
 - **ของคนอื่น** — shared code (DB function, shared component, base class, common SQL),
   other screens/modules calling it, API contract consumers, files another branch or the
   user's WIP is editing.
+
+**โค้ดของทีม/module อื่น** (เช่นงาน EN ต้องแตะ service ของ FN): ห้ามแก้เองโดยไม่ถาม. ถามด้วย
+`AskUserQuestion` ก่อน build ว่าจะ (ก) ทำแค่ฝั่งตัวเอง + เขียนส่งต่อ (README/diagram: ฝั่งเราเตรียมอะไรไว้แล้ว
+ทีมนั้นต้องแก้อะไร ที่ไหน) หรือ (ข) แก้ข้ามทีมในงานนี้. ไม่รู้ว่าใครเป็นเจ้าของ → ถือว่าเป็นของทีมอื่น.
+ถ้าเปลี่ยนการเรียกข้ามทีมเป็น event: ฝั่งที่ประกาศ event เป็นเจ้าของ contract ของ event; ฝั่งเรา
+เพิ่มได้แค่ตัวรับ และของเดิมที่ทีมนั้นยังเรียกให้ใช้ `[Obsolete]` ชี้ทางใหม่แทนการลบ/เปลี่ยนชื่อ.
 
 Report as: **จุดกระทบ → ความเสี่ยง → แนวทาง**, options laid out with the recommended one
 first (e.g. narrow-scope change vs shared-code change + fix all callers). Zero impact
@@ -341,6 +348,9 @@ recommended option first. Triggers:
 Never guess on a user-owned decision; never proceed past one.
 
 ### 7. Commit discipline
+- **Never commit before the user has reviewed.** Every ticket ends with the diff summary and a stop; commit only on
+  an explicit "commit" from the user (a plan approval, "เริ่มเลย" or "ไปต่อ" is not commit approval). Already
+  committed by mistake → say so, offer to keep or undo, never rewrite history unasked.
 - Atomic commit per task. Stage only that task's files.
 - When a task's changes sit in files that also hold user WIP (or another session's work),
   ask ONCE per run with `AskUserQuestion`:
@@ -352,7 +362,7 @@ Never guess on a user-owned decision; never proceed past one.
   the user says otherwise.
 - `Co-Authored-By` trailer: the commit holds work you wrote → add it. The commit holds only the
   user's own changes → do NOT add it.
-- Commit when the user signals it. If they say "let me review first", present the
+- Commit only when the user signals it, per ticket. If they say "let me review first", present the
   diff and wait — don't auto-commit.
 
 ### 7b. ทดสอบบนจอ — ถามก่อนเสมอ
@@ -388,7 +398,9 @@ remaining tasks.
    ห้าม merge PR เอง.
 
 ## Red flags — never
-- Dispatch a subagent (Agent/Task/workflow) anywhere in this flow — solo only.
+- Dispatch a subagent (Agent/Task/workflow) anywhere in this flow — solo only, ultracode or not.
+- Commit before the user has reviewed that ticket's diff and said to commit.
+- Edit another team's / module's code without asking first (step 3).
 - Reply to the user in English — Thai-only this flow.
 - Run the flow without invoking `i-have-adhd` then `caveman` at step 1.
 - Let caveman crush ADHD structure — no wall-of-text multi-step answers, no dropped
