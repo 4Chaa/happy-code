@@ -152,6 +152,27 @@ async function holdToast(page) {
   if (await first.count()) await hover(page, first).catch(() => {});
 }
 
+// Type of the first toast: 'error' | 'warning' | 'success' | 'info' | '' (none). The HTTP interceptor picks it
+// from the status (e.g. 403 -> warning, 400 -> error): put the colour in the verdict table, not only the text.
+async function toastKind(page) {
+  const cls = (await page.locator(TOAST).first().getAttribute('class').catch(() => '')) || '';
+  return (cls.match(/toast-(error|warning|success|info)/) || [])[1] || '';
+}
+
+// ---------- negative paths the screen blocks (dev build only) ----------
+// Calls a method of the Angular component on `host` through window.ng, e.g. a hidden Approve or a disabled Add.
+// The real FE request, interceptor and toast still run, so the tester sees the BE refusal on screen.
+// Say it in the intro ("script ฝืนผ่าน window.ng"). Returns 'ok' or why it could not call.
+async function devCall(page, host, method, ...args) {
+  return page.evaluate(([host, method, args]) => {
+    if (!window.ng || !window.ng.getComponent) return 'ไม่มี window.ng (ไม่ใช่ dev build)';
+    const element = document.querySelector(host);
+    if (!element) return `ไม่มี ${host}`;
+    window.ng.getComponent(element)[method](...args);
+    return 'ok';
+  }, [host, method, args]);
+}
+
 // ---------- ngx-datatable: rows on the current page only (it pages, 10 per page by default) ----------
 async function gridRows(page) {
   return page.locator('datatable-body-row').evaluateAll(rows => rows.map(r => ({
@@ -262,6 +283,6 @@ const shot = (page, name) => page.screenshot({ path: path.join(QA_DIR, 'shots', 
 
 module.exports = {
   attach, settle, showCursor, click, type, hover, ng, selected, options, pick, clearSelect, pickTypeahead, fieldMessage,
-  dismissToasts, toasts, holdToast, gridRows, column, nextGridPage, row, checkRow, searchRow,
+  dismissToasts, toasts, holdToast, toastKind, devCall, gridRows, column, nextGridPage, row, checkRow, searchRow,
   trackAuth, api, errorText, db, shot,
 };

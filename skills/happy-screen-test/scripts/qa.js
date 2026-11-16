@@ -3,6 +3,8 @@
 // doing():   while the script plays the screen.
 // verdict(): each check as  เรื่องที่ตรวจ | ที่ถูกต้อง | ที่ระบบได้ | ✅/❌ ; waits for
 //            ถัดไป / ✗ ไม่ถูกต้อง (note, logged and printed as USER FAIL) / ↻ ทำซ้ำ / ◀ ย้อน.
+//            With a ❌ in the table, ถัดไป needs a second click and prints USER OVERRIDE (passed over a failed check).
+//            { once: true } hides ↻ ทำซ้ำ for a case that cannot run twice (it continues from state an earlier step changed).
 // The panel collapses (— ย่อ) and changes corner; a note being typed survives both. ↻ ทำซ้ำ replays without the intro.
 // Answers are appended to $QA_DIR/user-verdicts.jsonl.
 const fs = require('node:fs');
@@ -64,13 +66,21 @@ async function show(page, spec) {
       head.append(btn('◀ ย้อน', '#4a5568', () => answer('back')));
     }
     if (spec.mode === 'verdict') {
-      head.append(btn('ถัดไป ▶', '#2f855a', () => answer('next')));
+      const failed = (spec.checks || []).filter(c => !c.ok).length;
+      head.append(btn('ถัดไป ▶', '#2f855a', e => {
+        if (failed && !e.target.dataset.sure) {
+          e.target.dataset.sure = '1';
+          e.target.textContent = `มี ❌ ${failed} ข้อ — กดอีกครั้งถ้าผ่านจริง`;
+          return;
+        }
+        answer('next');
+      }));
       head.append(btn('✗ ไม่ถูกต้อง', '#c53030', () => {
         window.__qaFailOpen = true;
         const f = document.getElementById('qa-fail');
         if (f) { f.style.display = 'block'; f.querySelector('textarea').focus(); }
       }));
-      head.append(btn('↻ ทำซ้ำ', '#4a5568', () => answer('retry')));
+      if (!spec.once) head.append(btn('↻ ทำซ้ำ', '#4a5568', () => answer('retry')));
       head.append(btn('◀ ย้อน', '#4a5568', () => answer('back')));
     }
     head.append(btn(collapsed ? '▢ ขยาย' : '— ย่อ', border, () => { store.set('qaCollapsed', collapsed ? '0' : '1'); window.__qaRedraw = true; }));
@@ -192,11 +202,12 @@ async function doing(page, tc, what) {
 }
 
 // The result: checks are { label, want, detail, ok }. ย้อน / ทำซ้ำ throw Jump.
-async function verdict(page, tc, checks, source) {
+async function verdict(page, tc, checks, source, { once = false } = {}) {
   console.log('WAITING USER', tc);
-  const { action, note } = await ask(page, { mode: 'verdict', title: `⏸ ${named(tc)} — ตรวจบนจอ`, checks, source });
+  const { action, note } = await ask(page, { mode: 'verdict', title: `⏸ ${named(tc)} — ตรวจบนจอ`, checks, source, once });
   fs.appendFileSync(VERDICTS, JSON.stringify({ tc, action, note, checks }) + '\n');
-  console.log(action === 'fail' ? `USER FAIL ${tc} :: ${note}` : `USER ${action.toUpperCase()} ${tc}`);
+  const said = action === 'next' && checks.some(c => !c.ok) ? 'OVERRIDE' : action.toUpperCase();
+  console.log(action === 'fail' ? `USER FAIL ${tc} :: ${note}` : `USER ${said} ${tc}`);
   replay = action === 'retry';
   if (action === 'back' || action === 'retry') throw new Jump(action);
 }

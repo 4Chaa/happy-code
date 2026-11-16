@@ -70,7 +70,10 @@ command คงรูปเดิม (ไม่แปล). คงไว้จน�
 ### 1. Output style first — REQUIRED, before anything else
 Two skills, in this order, before the grill and before any exploration:
 
-**1a. `i-have-adhd`** — invoke it first (`Skill` tool, name `i-have-adhd:i-have-adhd`). Shapes
+**1a. `i-have-adhd`** — load it first. It sets `disable-model-invocation: true`, so the `Skill` tool
+cannot call it — don't try. Load it the way step 2b loads `to-spec`: Glob `**/skills/i-have-adhd/SKILL.md`
+under `~/.claude/plugins/cache/` (skip `.cursor/`; several versions → the highest), Read it, and follow it
+as if invoked. Not installed → say so in one line and follow the rules below yourself. Shapes
 every response for the rest of the run: lead with the next action, number multi-step work,
 restate state across turns, no tangents, specific time estimates, visible wins.
 
@@ -93,6 +96,24 @@ Invoke `mattpocock-skills:grill-with-docs`. Interview the user about the task un
 - Explore the codebase to answer questions yourself instead of asking the user.
 - One question at a time; always give a recommended answer first.
 - Resolve every design branch and dependency before writing any code.
+
+**REQUIRED: ค้น convention ของโมดูลข้างเคียงก่อนเสนอตัวเลือก.** เรื่องที่ระบบมีของคล้ายกันอยู่แล้ว — endpoint กลางที่
+โมดูลอื่นใช้, ค่า audit (`created_by` / `created_program`) ของข้อมูลที่ระบบอื่นยิงเข้ามา, event / handler pattern,
+แถวที่จองไว้ในเอกสารกลาง — grep โค้ดและ query ข้อมูลจริง (read-only) ของโมดูลพี่น้องก่อน แล้วให้ตัวเลือกที่ตรง
+convention เป็นตัวแนะนำ อ้าง `file:line` หรือแถวข้อมูล. เดาจากชื่อจอ (เช่นเสนอ program = ชื่อจอ ทั้งที่ระบบอื่นใช้
+`<MODULE>_INTERFACE`) = แนะนำผิดและ user ต้องแก้ให้.
+
+**REQUIRED: งานแตะสิทธิ์ / การมองเห็นข้อมูล → ไล่ทุกจุดที่ข้อมูลโผล่ใน grill** ก่อนล็อกกติกา. แสดงเป็นตารางให้ user
+ตอบทีละแถว (กติกาที่ไม่ได้เขียนต่อแถว = user ต้องทักทีละจุดหลัง build):
+
+| จุด | ใครเห็น / ทำได้ | เช็คที่ |
+|---|---|---|
+| จอค้นหา (list) | … | BE query |
+| dropdown / typeahead ทุกตัวที่ดึงข้อมูลนี้ | … | BE query |
+| เปิด detail / edit | … | BE + resolver |
+| เข้าโหมด add | … | resolver (แจ้งเตือน + กลับจอค้นหา) + BE |
+| action (ส่ง / อนุมัติ / ยกเลิก) | … | BE hook |
+| API ภายนอก / export / print | … | BE |
 
 **REQUIRED: ถามโจทย์ก่อนเสนอทางเลือก.** คำถามแรกของ grill (ก่อนคำถามที่มีตัวเลือก) ต้องล็อก
 สิ่งที่ห้ามเปลี่ยนและ source of truth ให้ได้ก่อน เช่น "ต้องคงรหัส status เดิมไหม", "ยึด db_status
@@ -172,6 +193,10 @@ radius with grep/Glob yourself, don't guess. Cover both:
 - **ของคนอื่น** — shared code (DB function, shared component, base class, common SQL),
   other screens/modules calling it, API contract consumers, files another branch or the
   user's WIP is editing.
+- **command ซ้อน** — design ที่เรียก command จากใน handler หรือ event handler (`Mediator.Send` ซ้อน): inner command
+  อยู่ใน transaction เดียวกันไหม, domain event ของ inner ยิงตอนไหน (pipeline ที่ข้าม transaction ซ้อนมักไม่ dispatch
+  event จนจบ command นอกสุด), audit ได้ user / program ของใคร. อ่าน pipeline behaviour จริงก่อน แล้วยกขึ้นตั้งแต่ grill
+  ตอนเลือก design — ไม่ใช่รอ user ทัก.
 
 **โค้ดของทีม/module อื่น** (เช่นงาน EN ต้องแตะ service ของ FN): ห้ามแก้เองโดยไม่ถาม. ถามด้วย
 `AskUserQuestion` ก่อน build ว่าจะ (ก) ทำแค่ฝั่งตัวเอง + เขียนส่งต่อ (README/diagram: ฝั่งเราเตรียมอะไรไว้แล้ว
@@ -235,7 +260,8 @@ User เปลี่ยนการตัดสินใจหรือเพิ
 1. อัปเดต `spec.md` เฉพาะหัวข้อที่เปลี่ยน (Implementation Decisions, Testing Decisions, Out of Scope).
 2. อัปเดตตาราง ticket (เพิ่มหรือแก้แถว และ blocking) และ `state.md` หัวข้อ Decisions.
 3. เพิ่ม impact 1–3 บรรทัด: จุดใหม่ที่แตะ, shared code ใหม่, ความเสี่ยงใหม่. โครงไม่เปลี่ยน → ไม่ต้องวาดภาพใหม่.
-4. test case ที่เปลี่ยน → แก้ test ก่อน แล้วดูให้แดงอีกรอบ.
+4. test case ที่เปลี่ยน → แก้ test ก่อน แล้วดูให้แดงอีกรอบ. รวม manual test plan (`docs/test-plans/`): เคสที่ผลคาด
+   เปลี่ยนตามกติกาใหม่ แก้ในไฟล์ แล้วบอก user ว่าเคสไหนต้องเล่นจอซ้ำ.
 5. สรุป delta เป็นก้อนเดียวไม่เกิน 5 บรรทัด แล้วรอ "ok" สั้น ๆ. user สั่ง "ทำทีเดียวเลย" ไว้แล้ว
    → แจ้ง delta แล้วทำต่อได้ ไม่ต้องรอ.
 
@@ -397,17 +423,29 @@ remaining tasks.
 5. **หลังสร้าง:** รายงานลิงก์, mergeable, behind และ CI. Host เป็น GitHub → bind กับ PR tooling ของ app.
    ห้าม merge PR เอง.
 
+### 8b. หลังจบ — build / deploy / เอกสาร (เฉพาะเมื่อ user สั่ง)
+- **build / push image ด้วย script ในเครื่อง** → เทียบกับ CI ของ repo ก่อนรัน (`Jenkinsfile`, `.gitlab-ci.yml`, workflow):
+  runtime version, env (เช่น `NPM_CONFIG_LEGACY_PEER_DEPS`), ขั้นหลัง build. ต่างกัน → ทำตาม CI แล้วบอก user หนึ่งบรรทัด.
+  ห้ามสลับ runtime ทั้งเครื่อง (nvm-windows `nvm use`) โดยไม่ถาม. ขั้นที่อาจเป็น no-op (patch script ที่ไม่เจอ string)
+  → ตรวจผลจริง อย่าให้ check เข้มเกินจน fail ทั้ง run. รายงาน tag + digest ที่ push จริง.
+- **อัปเดตเอกสาร docx บน SharePoint / OneDrive** → ไฟล์ > 1 MB `sharepoint_update_file` รับไม่ได้: เปิด URL ผ่าน
+  Word COM, clone section ที่ใกล้เคียงแล้วแก้, save ทับ, export PDF แล้ว render ดูหน้าที่แก้ก่อนรายงาน. ระวัง page break
+  ที่ติดมากับ section (หน้าว่าง) และตัวไทยต้องตั้ง font ของ complex script (`NameBi` / `SizeBi`) ด้วย.
+
 ## Red flags — never
 - Dispatch a subagent (Agent/Task/workflow) anywhere in this flow — solo only, ultracode or not.
 - Commit before the user has reviewed that ticket's diff and said to commit.
 - Edit another team's / module's code without asking first (step 3).
 - Reply to the user in English — Thai-only this flow.
-- Run the flow without invoking `i-have-adhd` then `caveman` at step 1.
+- Run the flow without loading `i-have-adhd` (Read its SKILL.md — the Skill tool cannot call it) then `caveman` at step 1.
 - Let caveman crush ADHD structure — no wall-of-text multi-step answers, no dropped
   "ต่อไปทำอะไร" line.
 - Skip `to-spec` / `to-tickets` after the grill — เว้น task เล็กที่ประกาศไว้ว่า "1 ticket, ไม่แตก"
   หรืองานที่เข้า quick-fix lane (step 2d) ครบทุกเงื่อนไข.
 - เสนอทางเลือกก่อนล็อกว่าอะไรห้ามเปลี่ยน / source of truth (step 2).
+- เสนอทางเลือกก่อนค้น convention ของโมดูลข้างเคียงทั้งในโค้ดและในข้อมูล (step 2).
+- งานแตะสิทธิ์ / การมองเห็นข้อมูล แต่ไม่ได้ไล่ตารางจุดที่ข้อมูลโผล่ใน grill (step 2).
+- เลือก design ที่ประกอบ command ซ้อนโดยไม่เช็ค transaction / domain event boundary (step 3).
 - เขียนโค้ดต่อหลัง user เปลี่ยนการตัดสินใจหลัง confirm โดยไม่ทำ delta loop (step 3b).
 - เชื่อสรุปหลัง compact มากกว่า `state.md` + `git status`.
 - Show the ticket breakdown as anything other than a markdown table.
