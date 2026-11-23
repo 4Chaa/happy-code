@@ -1,6 +1,7 @@
 // On-screen case panel for a manual screen test (happy-screen-test).
 // intro():   before the screen plays — the case, its topic, the steps, what is correct, the source data; waits for ▶ เริ่ม.
-// doing():   while the script plays the screen.
+// doing():   while the script plays the screen: only a small badge (▶ case code) in the bottom-right corner that clicks
+//            pass through, so the panel never covers what the mouse is about to click.
 // verdict(): each check as  เรื่องที่ตรวจ | ที่ถูกต้อง | ที่ระบบได้ | ✅/❌ ; waits for
 //            ถัดไป / ✗ ไม่ถูกต้อง (note, logged and printed as USER FAIL) / ↻ ทำซ้ำ / ◀ ย้อน.
 //            With a ❌ in the table, ถัดไป needs a second click and prints USER OVERRIDE (passed over a failed check).
@@ -50,6 +51,14 @@ async function show(page, spec) {
     const collapsed = store.get('qaCollapsed') === '1';
     const border = spec.mode === 'intro' ? '#2b6cb0' : '#b7791f';
     const bg = spec.mode === 'intro' ? '#ebf8ff' : '#fffbea';
+    // Playing the screen: a click-through badge instead of the panel.
+    if (spec.mode === 'doing') {
+      p.style.cssText = 'position:fixed;z-index:2147483647;right:12px;bottom:12px;pointer-events:none;opacity:.9;'
+        + 'background:' + border + ';color:#fff;border-radius:999px;padding:2px 10px;font:600 12px/1.6 sans-serif;'
+        + 'white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.3)';
+      p.replaceChildren(document.createTextNode(spec.badge || '▶'));
+      return;
+    }
     p.style.cssText = 'position:fixed;z-index:2147483647;width:min(980px,calc(100vw - 32px));max-height:' + (collapsed ? 'none' : '72vh') + ';overflow:auto;'
       + (top ? 'right:16px;top:64px;' : 'left:16px;bottom:16px;')
       + 'background:' + bg + ';border:2px solid ' + border + ';border-radius:8px;padding:8px 12px;font:14px/1.5 sans-serif;color:#222;box-shadow:0 2px 8px rgba(0,0,0,.25)';
@@ -198,7 +207,7 @@ async function intro(page, tc, steps, expect, source) {
 // While the script plays the screen.
 async function doing(page, tc, what) {
   await reset(page);
-  await show(page, { mode: 'doing', title: `▶ ${named(tc)} — กำลังเล่นจอ`, lines: [what] });
+  await show(page, { mode: 'doing', badge: `▶ ${tc}`, title: `▶ ${named(tc)} — กำลังเล่นจอ`, lines: [what] });
 }
 
 // The result: checks are { label, want, detail, ok }. ย้อน / ทำซ้ำ throw Jump.

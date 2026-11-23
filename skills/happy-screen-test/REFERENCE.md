@@ -6,7 +6,7 @@
 |---|---|---|
 | `browser.js` | เปิด Chrome ค้างไว้ (persistent profile, `--remote-debugging-port`) | `QA_DIR`, `APP_URL`, `CDP_PORT`=9333, `PW_CHANNEL`=chrome |
 | `login.js` | รอ user login จนเห็น `READY_SELECTOR` (สูงสุด 20 นาที) | `APP_URL`, `READY_SELECTOR`, `CDP_PORT` |
-| `qa.js` | กล่องบนจอ: `setTopics`, `intro`, `doing`, `verdict` (`{ once: true }` ซ่อน ทำซ้ำ; มี ❌ แล้วกด ถัดไป = กดสองครั้ง + `USER OVERRIDE`), `check`, `csvSource`, `Jump` | `QA_DIR` (เก็บ `user-verdicts.jsonl`) |
+| `qa.js` | กล่องบนจอ: `setTopics`, `intro`, `doing` (แค่ badge ▶ รหัสเคส มุมขวาล่าง คลิกทะลุ ไม่บังจอ), `verdict` (`{ once: true }` ซ่อน ทำซ้ำ; มี ❌ แล้วกด ถัดไป = กดสองครั้ง + `USER OVERRIDE`), `check`, `csvSource`, `Jump` | `QA_DIR` (เก็บ `user-verdicts.jsonl`) |
 | `runner.js` | `run(page, cases)` — วนเคส, ย้อน / ทำซ้ำ / ข้าม | `START`, `STOP` |
 | `recorder.js` | `start(page)`, `read(page)`, `timeline(rec)` — บันทึก toast + progress ต่อ tab | — |
 | `kit.js` | เมาส์/คีย์บอร์ดแบบคน: `click`, `type`, `hover`, `showCursor` (จุดแดง). Angular + ng-select + ngx-datatable + ngx-toastr: `pick`, `options`, `selected`, `clearSelect`, `pickTypeahead`, `fieldMessage`, `toasts`, `toastKind`, `holdToast`, `dismissToasts`, `gridRows`, `column`, `nextGridPage`, `row`, `checkRow`, `searchRow`. Negative path ที่จอกันไว้ (dev build): `devCall`. API (FE = BE เท่านั้น): `trackAuth`, `api`, `errorText`. DB read-only: `db`. `shot` | `APP_URL`, `CDP_PORT`, `QA_DIR`, `HUMAN_PACE` (1), `DB_CMD`, `DB_CWD` |
