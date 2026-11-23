@@ -6,7 +6,7 @@
 |---|---|---|
 | `browser.js` | เปิด Chrome ค้างไว้ (persistent profile, `--remote-debugging-port`) | `QA_DIR`, `APP_URL`, `CDP_PORT`=9333, `PW_CHANNEL`=chrome |
 | `login.js` | รอ user login จนเห็น `READY_SELECTOR` (สูงสุด 20 นาที) | `APP_URL`, `READY_SELECTOR`, `CDP_PORT` |
-| `qa.js` | กล่องบนจอ: `setTopics`, `intro`, `doing` (แค่ badge ▶ รหัสเคส มุมขวาล่าง คลิกทะลุ ไม่บังจอ), `verdict` (`{ once: true }` ซ่อน ทำซ้ำ; มี ❌ แล้วกด ถัดไป = กดสองครั้ง + `USER OVERRIDE`), `check`, `csvSource`, `Jump` | `QA_DIR` (เก็บ `user-verdicts.jsonl`) |
+| `qa.js` | กล่องบนจอ (หัว = รหัสเคส + เรื่อง + สรุป "ไม่ผ่าน 1 จาก 3 ข้อ", ปุ่ม ย่อ / ย้ายมุม เป็นไอคอนเล็ก; ปุ่มตัดสินใจล่างขวา): `setTopics`, `intro` (ขั้นตอน \| ที่ถูกต้อง คู่กัน แล้วข้อมูลต้นทาง), `doing` (แค่ badge "กำลังเล่น · รหัสเคส" มุมขวาล่าง คลิกทะลุ ไม่บังจอ), `verdict` (ผล \| เรื่องที่ตรวจ \| ที่ถูกต้อง \| ที่ระบบได้, ข้อไม่ผ่านแดงทั้งแถว; `{ once: true }` ซ่อน ทำซ้ำ; มีข้อไม่ผ่านแล้วกด ถัดไป = กดสองครั้ง + `USER OVERRIDE`), `check`, `csvSource`, `Jump` | `QA_DIR` (เก็บ `user-verdicts.jsonl`) |
 | `runner.js` | `run(page, cases)` — วนเคส, ย้อน / ทำซ้ำ / ข้าม | `START`, `STOP` |
 | `recorder.js` | `start(page)`, `read(page)`, `timeline(rec)` — บันทึก toast + progress ต่อ tab | — |
 | `kit.js` | เมาส์/คีย์บอร์ดแบบคน: `click`, `type`, `hover`, `showCursor` (จุดแดง). Angular + ng-select + ngx-datatable + ngx-toastr: `pick`, `options`, `selected`, `clearSelect`, `pickTypeahead`, `fieldMessage`, `toasts`, `toastKind`, `holdToast`, `dismissToasts`, `gridRows`, `column`, `nextGridPage`, `row`, `checkRow`, `searchRow`. Negative path ที่จอกันไว้ (dev build): `devCall`. API (FE = BE เท่านั้น): `trackAuth`, `api`, `errorText`. DB read-only: `db`. `shot` | `APP_URL`, `CDP_PORT`, `QA_DIR`, `HUMAN_PACE` (1), `DB_CMD`, `DB_CWD` |
@@ -42,7 +42,7 @@ Log ที่ script พิมพ์: `BROWSER READY|CLOSED`, `LOGIN NEEDED|LOGG
 | ค้นหาแล้วไม่เจอ record ที่เพิ่งสร้าง | filter เริ่มต้นของจอค้นหา (เช่น ระบบการศึกษา) ไม่ตรงกับ record | `searchRow(page, key, { input, submit, fallbackSelect })` |
 | เลือกใน typeahead ไม่เจอด้วยรหัส | ตัวเลือกแสดงชื่อ (เช่น ชื่อหลักสูตร) ไม่ใช่รหัส | `pickTypeahead(page, name, { text })` เลือกด้วยชื่อหรือตัวแรก แล้วใส่ชื่อที่เลือกในตาราง verdict |
 | ติ๊ก checkbox ใน grid ไม่ได้ ("element is not visible") | custom-control: input ซ่อนใต้ label ว่าง | `checkRow(page, text)` — เมาส์ไปที่กล่อง แล้ว check input แบบ force |
-| แก้ `cases.js` แล้วกด ↻ ทำซ้ำ ยังพังแบบเดิม | process เดิมโหลดโค้ดเก่าไว้ | `TaskStop` แล้วรันใหม่ด้วย `START=n` |
+| แก้ `cases.js` แล้วกด ทำซ้ำ ยังพังแบบเดิม | process เดิมโหลดโค้ดเก่าไว้ | `TaskStop` แล้วรันใหม่ด้วย `START=n` |
 | query ตรวจ DB ได้ `Reading as 'System.Object' is not supported ... regclass` | reader อ่าน type ระบบไม่ได้ | cast เป็น `::text` |
 | ผลที่คาดไม่ตรงกับระบบ แต่ระบบถูก | เขียนผลที่คาดจากความเข้าใจ ไม่ได้อ่านกฎ | อ่าน method ที่ตัดสินผล (เช่น `NeedsExamSeat`) แล้วอ้าง `file:line` ใน test plan |
 | แถว import แดง "ไม่มีสิทธิ์ศูนย์…" ปุ่มบันทึกถูกปิด | ผู้ใช้ไม่มีสิทธิ์ข้อมูลที่ไฟล์ใช้ | precondition สิทธิ์ข้อมูลใน test plan; ถาม user ก่อนเล่น |
@@ -53,7 +53,7 @@ Log ที่ script พิมพ์: `BROWSER READY|CLOSED`, `LOGIN NEEDED|LOGG
 | ไม่มีกลุ่มเรียน / ตัวเลือกที่คาด | ยังไม่ได้ตั้งปี/ภาคที่ข้อมูลทดสอบอยู่ (จอใช้ default ปีอื่น) | ตั้งปี/ภาคก่อนแล้วรอ `networkidle`; เขียนปี/ภาคไว้ในขั้นตอนของ intro |
 | จำนวนแถวที่คาดเกินจากที่จอแสดง | query ไม่ใส่ filter ตั้งต้นของจอ (เช่น ระบบการศึกษา) | ใส่ค่า default ของช่องค้นหาใน query นับ |
 | ยิง API ตรงได้ 400 JSON parse error | body ประกอบเองผิด type (object แทน string) | ลอก body จาก request จริงของ FE แล้วแก้เฉพาะ field ที่ทดสอบ |
-| กด ↻ ทำซ้ำ แล้วเคสพัง | เคสต่อจากสถานะที่ขั้นก่อนเปลี่ยนไปแล้ว (ทำซ้ำไม่ได้) | อ่านสถานะก่อนเล่น หรือ `verdict(..., { once: true })` |
+| กด ทำซ้ำ แล้วเคสพัง | เคสต่อจากสถานะที่ขั้นก่อนเปลี่ยนไปแล้ว (ทำซ้ำไม่ได้) | อ่านสถานะก่อนเล่น หรือ `verdict(..., { once: true })` |
 | ผู้ทดสอบตีตกเพราะ "เปิดผิดใบ" ทั้งที่ตั้งใจ | intro ไม่บอกว่าขั้นนั้นใช้ record คนละใบ | ใส่เลข record และเหตุผลใน intro / verdict |
 | ผู้ทดสอบอยากเห็น error บนจอ แต่เคสยิง API เงียบ ๆ | negative path ที่จอกันไว้ ไม่มีปุ่มให้กด | `devCall` ให้ FE ยิง request จริง → toast ขึ้นบนจอ; ใส่สีด้วย `toastKind` |
 | toast สีไม่ตรงที่คาด | interceptor แยกสีตาม status (เช่น 403 = warning เหลือง, 400 = error แดง) | อ่าน interceptor ก่อนเขียนผลที่คาด; ตรวจด้วย `toastKind` |
@@ -71,7 +71,8 @@ Log ที่ script พิมพ์: `BROWSER READY|CLOSED`, `LOGIN NEEDED|LOGG
   แล้วแปล `errors[].code` + `parameters` ด้วยตารางข้อความของระบบ (เช่น `su_message`, `su_program_label`) — read-only.
 - **job เบื้องหลัง + หลาย tab:** Tab A กดบันทึก → เช็ค A ได้ 202 เร็ว, Tab B เปลี่ยนเป็น progress เอง, B ส่งซ้อนได้ error,
   A จบแล้ว B ไม่มี toast และ grid ยังอยู่. ใช้ไฟล์เล็ก (~30 แถว) ลดข้อมูลที่เขียนลง dev.
-- **ข้อมูลต้นทางที่ไม่ใช่ไฟล์:** `{ caption: 'request (ข้าม FE)', text: ['POST /api/x ไม่ส่ง year', 'BE ตอบ: message.STD00023'] }`.
+- **ข้อมูลต้นทางที่ไม่ใช่ไฟล์:** เป็นตารางเหมือน CSV (แถวแรก = หัวคอลัมน์), เหตุผล / หมายเหตุใส่ `text` ใต้ตาราง:
+  `{ caption: 'request (ข้าม FE)', table: [['method', 'url', 'year'], ['POST', '/api/x', '(ไม่ส่ง)']], text: ['BE ตอบ: message.STD00023'] }`.
 - **ฝืน negative path ที่จอกันไว้ (dev build):** ปุ่ม อนุมัติ ไม่ขึ้นสำหรับคนไม่มีสิทธิ์ → เรียก method ของ component ตรง
   ให้ FE ยิง request จริงแล้ว interceptor ขึ้น toast:
   ```js

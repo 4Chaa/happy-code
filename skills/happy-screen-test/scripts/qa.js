@@ -1,13 +1,15 @@
 // On-screen case panel for a manual screen test (happy-screen-test).
-// intro():   before the screen plays — the case, its topic, the steps, what is correct, the source data; waits for ▶ เริ่ม.
-// doing():   while the script plays the screen: only a small badge (▶ case code) in the bottom-right corner that clicks
-//            pass through, so the panel never covers what the mouse is about to click.
-// verdict(): each check as  เรื่องที่ตรวจ | ที่ถูกต้อง | ที่ระบบได้ | ✅/❌ ; waits for
-//            ถัดไป / ✗ ไม่ถูกต้อง (note, logged and printed as USER FAIL) / ↻ ทำซ้ำ / ◀ ย้อน.
-//            With a ❌ in the table, ถัดไป needs a second click and prints USER OVERRIDE (passed over a failed check).
-//            { once: true } hides ↻ ทำซ้ำ for a case that cannot run twice (it continues from state an earlier step changed).
-// The panel collapses (— ย่อ) and changes corner; a note being typed survives both. ↻ ทำซ้ำ replays without the intro.
-// Answers are appended to $QA_DIR/user-verdicts.jsonl.
+// Layout, top to bottom: head (case code + topic, verdict summary "ไม่ผ่าน 1 จาก 3 ข้อ", small ย่อ / ย้ายมุม icons),
+// body (scrolls; head and actions stay in view), note box, action bar (bottom right, the main action last).
+// intro():   before the screen plays — steps and what is correct side by side, then the source data; ▶ เริ่ม.
+// doing():   while the script plays the screen: only a small badge (กำลังเล่น · case code) in the bottom-right corner
+//            that clicks pass through, so the panel never covers what the mouse is about to click.
+// verdict(): each check as  ผล | เรื่องที่ตรวจ | ที่ถูกต้อง | ที่ระบบได้  (a failed check is red across its row); waits for
+//            ถัดไป / ไม่ถูกต้อง (note, logged and printed as USER FAIL) / ทำซ้ำ / ย้อน.
+//            With a failed check, ถัดไป needs a second click and prints USER OVERRIDE (passed over a failed check).
+//            { once: true } hides ทำซ้ำ for a case that cannot run twice (it continues from state an earlier step changed).
+// The panel collapses (head + actions only) and changes corner; a note being typed survives both. ทำซ้ำ replays
+// without the intro. Answers are appended to $QA_DIR/user-verdicts.jsonl.
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -17,9 +19,9 @@ const VERDICTS = path.join(process.env.QA_DIR || __dirname, 'user-verdicts.jsonl
 let topics = {};
 function setTopics(map) { topics = map; }
 
-function named(tc) {
+function topicOf(tc) {
   const key = Object.keys(topics).filter(k => tc.startsWith(k)).sort((a, b) => b.length - a.length)[0];
-  return key ? `${tc} · เรื่อง: ${topics[key]}` : tc;
+  return key ? topics[key] : '';
 }
 
 // The file as the tester would open it: the header and up to maxRows rows as a table (+ the last row when cut).
@@ -38,131 +40,272 @@ class Jump extends Error {
   constructor(to) { super('jump ' + to); this.to = to; }
 }
 
+// Scoped to #qa-panel so the host page's CSS (Bootstrap tables, buttons, lists) does not leak in, and so focus rings
+// and hover states exist at all (inline styles cannot carry them). Spacing steps 4 / 8 / 12 / 16.
+const PANEL_CSS = `
+#qa-panel{position:fixed;z-index:2147483647;box-sizing:border-box;width:min(980px,calc(100vw - 32px));display:flex;flex-direction:column;
+  background:#fff;color:#0f172a;border:2px solid var(--qa-accent);border-radius:10px;overflow:hidden;text-align:left;
+  box-shadow:0 10px 28px rgba(15,23,42,.18),0 2px 6px rgba(15,23,42,.12);font:14px/1.5 system-ui,'Segoe UI',Tahoma,'Noto Sans Thai',sans-serif}
+#qa-panel *{box-sizing:border-box}
+#qa-panel ::selection{background:var(--qa-tint-strong)}
+#qa-panel.qa-bottom{left:16px;bottom:16px}
+#qa-panel.qa-top{right:16px;top:64px}
+#qa-panel .qa-head{display:flex;align-items:flex-start;gap:12px;padding:12px 12px 10px 16px;background:var(--qa-tint);border-bottom:1px solid #e2e8f0}
+#qa-panel .qa-ident{flex:1;min-width:0}
+#qa-panel .qa-title{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;font-size:16px;font-weight:600;line-height:1.35}
+#qa-panel .qa-code{padding:1px 6px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;color:#334155;
+  font:600 12px/1.4 ui-monospace,Consolas,monospace;white-space:nowrap}
+#qa-panel .qa-summary{margin-top:4px;font-size:13px;font-weight:600}
+#qa-panel .qa-summary.fail{color:#b42318}
+#qa-panel .qa-summary.pass{color:#1e6b3a}
+#qa-panel .qa-tools{display:flex;gap:4px;margin-top:-2px}
+#qa-panel .qa-icon{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:0;border-radius:6px;
+  background:transparent;color:#475569;cursor:pointer}
+#qa-panel .qa-icon:hover{background:rgba(15,23,42,.07);color:#0f172a}
+#qa-panel .qa-body{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:16px;padding:12px 16px 16px}
+#qa-panel .qa-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px 24px}
+#qa-panel .qa-label{margin-bottom:6px;font-size:13px;font-weight:600;color:#475569}
+#qa-panel ol,#qa-panel ul{margin:0;padding-left:20px}
+#qa-panel li{margin:2px 0}
+#qa-panel table{border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;background:#fff}
+#qa-panel th{background:#f1f5f9;color:#334155;font-weight:600;text-align:left}
+#qa-panel th,#qa-panel td{padding:6px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top}
+#qa-panel .qa-checks{width:100%}
+#qa-panel .qa-checks td:first-child,#qa-panel .qa-checks th:first-child{width:1%;white-space:nowrap}
+#qa-panel .qa-checks td:nth-child(2){width:26%}
+#qa-panel .qa-checks tr.qa-fail td{background:#fdf2f2}
+#qa-panel .qa-checks tr.qa-fail td.qa-got{color:#b42318;font-weight:600}
+#qa-panel .qa-pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+#qa-panel .qa-pill.pass{background:#e7f6ec;color:#1e6b3a}
+#qa-panel .qa-pill.fail{background:#fde4e2;color:#b42318}
+#qa-panel .qa-scroll{overflow-x:auto}
+#qa-panel .qa-source th,#qa-panel .qa-source td{padding:3px 8px;border:1px solid #e2e8f0;white-space:nowrap;font-size:12.5px}
+#qa-panel .qa-source .qa-idx{background:#f8fafc;color:#64748b}
+#qa-panel .qa-source .qa-empty{background:#fdecec;color:#9b1c1c}
+#qa-panel .qa-source .qa-more{color:#64748b}
+#qa-panel .qa-note{margin:6px 0 0;font-size:12.5px;color:#475569}
+#qa-panel .qa-failbox{display:flex;flex-direction:column;gap:8px;padding:12px 16px;background:#fdf2f2;border-top:1px solid #f3c4c0}
+#qa-panel .qa-failbox[hidden]{display:none}
+#qa-panel .qa-failbox label{font-size:13px;font-weight:600;color:#7a1d16}
+#qa-panel textarea{width:100%;min-height:64px;padding:6px 8px;border:1px solid #e5a3a0;border-radius:6px;background:#fff;color:#0f172a;
+  font-family:inherit;font-size:13px;line-height:1.5;resize:vertical}
+#qa-panel .qa-failbox .qa-btn{align-self:flex-end}
+#qa-panel .qa-foot{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px;padding:10px 16px;background:#f8fafc;border-top:1px solid #e2e8f0}
+#qa-panel .qa-btn{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 14px;border:1px solid #cbd5e1;border-radius:6px;
+  background:#fff;color:#1e293b;font-family:inherit;font-size:13px;font-weight:600;line-height:1.2;cursor:pointer}
+#qa-panel .qa-btn:hover{background:#f1f5f9}
+#qa-panel .qa-btn.primary{background:var(--qa-primary);border-color:var(--qa-primary);color:#fff}
+#qa-panel .qa-btn.primary:hover{filter:brightness(.9)}
+#qa-panel .qa-btn.danger{border-color:#e5a3a0;color:#b42318}
+#qa-panel .qa-btn.danger:hover{background:#fdf2f2}
+#qa-panel .qa-btn.danger.solid{background:#b42318;border-color:#b42318;color:#fff}
+#qa-panel button:focus-visible,#qa-panel textarea:focus-visible{outline:2px solid var(--qa-accent);outline-offset:2px}
+#qa-panel.qa-badge{top:auto;left:auto;right:12px;bottom:12px;width:auto;flex-direction:row;align-items:center;gap:8px;padding:4px 12px;
+  border:0;border-radius:999px;background:var(--qa-accent);color:#fff;font-size:12px;font-weight:600;line-height:1.6;white-space:nowrap;
+  pointer-events:none;opacity:.92;box-shadow:0 2px 8px rgba(15,23,42,.25)}
+#qa-panel.qa-badge .qa-dot{width:8px;height:8px;border-radius:50%;background:#fff;animation:qa-pulse 1.6s cubic-bezier(.16,1,.3,1) infinite}
+@keyframes qa-pulse{0%{opacity:1}60%{opacity:.25}100%{opacity:1}}
+@media (prefers-reduced-motion:reduce){#qa-panel.qa-badge .qa-dot{animation:none}}
+`;
+
 // Builds the panel with DOM nodes and textContent only (no HTML from the data).
 async function show(page, spec) {
-  await page.evaluate(spec => {
+  await page.evaluate(([spec, css]) => {
     const store = {
       get: k => { try { return localStorage.getItem(k); } catch { return null; } },
       set: (k, v) => { try { localStorage.setItem(k, v); } catch { } },
     };
+    if (!document.getElementById('qa-style')) {
+      const s = document.createElement('style');
+      s.id = 'qa-style';
+      s.textContent = css;
+      (document.head || document.documentElement).appendChild(s);
+    }
     let p = document.getElementById('qa-panel');
     if (!p) { p = document.createElement('div'); p.id = 'qa-panel'; document.body.appendChild(p); }
-    const top = store.get('qaCorner') === 'top';
-    const collapsed = store.get('qaCollapsed') === '1';
-    const border = spec.mode === 'intro' ? '#2b6cb0' : '#b7791f';
-    const bg = spec.mode === 'intro' ? '#ebf8ff' : '#fffbea';
+    const tones = { intro: ['#2b6cb0', '#eef5fc', '#dbe9f8', '#2b6cb0'], verdict: ['#b7791f', '#fdf6e3', '#f6e3b4', '#276749'] };
+    const [accent, tint, tintStrong, primary] = tones[spec.mode] || tones.intro;
+    p.removeAttribute('style');
+    p.style.setProperty('--qa-accent', accent);
+    p.style.setProperty('--qa-tint', tint);
+    p.style.setProperty('--qa-tint-strong', tintStrong);
+    p.style.setProperty('--qa-primary', primary);
+    p.replaceChildren();
+
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const SVG = 'http://www.w3.org/2000/svg';
+    const icon = d => {
+      const svg = document.createElementNS(SVG, 'svg');
+      for (const [k, v] of Object.entries({ viewBox: '0 0 24 24', width: '16', height: '16', fill: 'none', stroke: 'currentColor',
+        'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' })) svg.setAttribute(k, v);
+      const line = document.createElementNS(SVG, 'path');
+      line.setAttribute('d', d);
+      svg.append(line);
+      return svg;
+    };
+    const ICON = { back: 'M15 6l-6 6 6 6', next: 'M9 6l6 6-6 6', start: 'M8 5l11 7-11 7z', retry: 'M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4',
+      fail: 'M6 6l12 12M18 6L6 18', collapse: 'M5 12h14', expand: 'M5 5h14v14H5z', toTop: 'M7 17L17 7M9 7h8v8', toBottom: 'M17 7L7 17M15 17H7V9' };
+    const btn = (text, cls, fn, before, after) => {
+      const b = el('button', 'qa-btn' + (cls ? ' ' + cls : ''));
+      b.type = 'button';
+      if (before) b.append(icon(ICON[before]));
+      b.append(document.createTextNode(text));
+      if (after) b.append(icon(ICON[after]));
+      b.onclick = fn;
+      return b;
+    };
+    const tool = (label, name, fn) => {
+      const b = el('button', 'qa-icon');
+      b.type = 'button';
+      b.title = label;
+      b.setAttribute('aria-label', label);
+      b.append(icon(ICON[name]));
+      b.onclick = fn;
+      return b;
+    };
+    const answer = (action, note) => { window.__qaAction = action; window.__qaNote = note || ''; };
+    const remember = (key, value) => { store.set(key, value); window.__qaRedraw = true; };
+
     // Playing the screen: a click-through badge instead of the panel.
     if (spec.mode === 'doing') {
-      p.style.cssText = 'position:fixed;z-index:2147483647;right:12px;bottom:12px;pointer-events:none;opacity:.9;'
-        + 'background:' + border + ';color:#fff;border-radius:999px;padding:2px 10px;font:600 12px/1.6 sans-serif;'
-        + 'white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.3)';
-      p.replaceChildren(document.createTextNode(spec.badge || '▶'));
+      p.className = 'qa-badge';
+      p.append(el('span', 'qa-dot'), el('span', '', `กำลังเล่น · ${spec.code || ''}`));
       return;
     }
-    p.style.cssText = 'position:fixed;z-index:2147483647;width:min(980px,calc(100vw - 32px));max-height:' + (collapsed ? 'none' : '72vh') + ';overflow:auto;'
-      + (top ? 'right:16px;top:64px;' : 'left:16px;bottom:16px;')
-      + 'background:' + bg + ';border:2px solid ' + border + ';border-radius:8px;padding:8px 12px;font:14px/1.5 sans-serif;color:#222;box-shadow:0 2px 8px rgba(0,0,0,.25)';
-    p.replaceChildren();
-    const el = (tag, css, text) => { const e = document.createElement(tag); if (css) e.style.cssText = css; if (text != null) e.textContent = text; return e; };
-    const btn = (text, color, fn) => { const b = el('button', 'margin-left:6px;padding:4px 12px;font-size:13px;background:' + color + ';color:#fff;border:0;border-radius:4px;cursor:pointer', text); b.onclick = fn; return b; };
-    const answer = (action, note) => { window.__qaAction = action; window.__qaNote = note || ''; };
 
-    const head = el('div', 'display:flex;align-items:center;gap:4px;flex-wrap:wrap');
-    head.append(el('div', 'font-weight:700;font-size:15px;flex:1;min-width:240px', spec.title));
-    if (spec.mode === 'intro') {
-      head.append(btn('▶ เริ่ม', '#2b6cb0', () => answer('start')));
-      head.append(btn('ข้าม', '#4a5568', () => answer('skip')));
-      head.append(btn('◀ ย้อน', '#4a5568', () => answer('back')));
+    const top = store.get('qaCorner') === 'top';
+    const collapsed = store.get('qaCollapsed') === '1';
+    p.className = top ? 'qa-top' : 'qa-bottom';
+    p.style.maxHeight = collapsed ? 'none' : '72vh';
+    p.setAttribute('role', 'region');
+    p.setAttribute('aria-label', `แผงทดสอบ ${spec.code || ''}`);
+    const checks = spec.checks || [];
+    const failed = checks.filter(c => !c.ok).length;
+
+    const head = el('div', 'qa-head');
+    const ident = el('div', 'qa-ident');
+    const title = el('div', 'qa-title');
+    if (spec.code) title.append(el('span', 'qa-code', spec.code));
+    title.append(el('span', '', spec.topic || spec.title || ''));
+    ident.append(title);
+    if (spec.mode === 'verdict' && checks.length) {
+      ident.append(el('div', 'qa-summary ' + (failed ? 'fail' : 'pass'),
+        failed ? `ไม่ผ่าน ${failed} จาก ${checks.length} ข้อ` : `ผ่านครบ ${checks.length} ข้อ`));
     }
-    if (spec.mode === 'verdict') {
-      const failed = (spec.checks || []).filter(c => !c.ok).length;
-      head.append(btn('ถัดไป ▶', '#2f855a', e => {
-        if (failed && !e.target.dataset.sure) {
-          e.target.dataset.sure = '1';
-          e.target.textContent = `มี ❌ ${failed} ข้อ — กดอีกครั้งถ้าผ่านจริง`;
-          return;
-        }
-        answer('next');
-      }));
-      head.append(btn('✗ ไม่ถูกต้อง', '#c53030', () => {
-        window.__qaFailOpen = true;
-        const f = document.getElementById('qa-fail');
-        if (f) { f.style.display = 'block'; f.querySelector('textarea').focus(); }
-      }));
-      if (!spec.once) head.append(btn('↻ ทำซ้ำ', '#4a5568', () => answer('retry')));
-      head.append(btn('◀ ย้อน', '#4a5568', () => answer('back')));
-    }
-    head.append(btn(collapsed ? '▢ ขยาย' : '— ย่อ', border, () => { store.set('qaCollapsed', collapsed ? '0' : '1'); window.__qaRedraw = true; }));
-    head.append(btn(top ? '⇙ ล่างซ้าย' : '⇗ บนขวา', border, () => { store.set('qaCorner', top ? 'bottom' : 'top'); window.__qaRedraw = true; }));
+    const tools = el('div', 'qa-tools');
+    tools.append(tool(collapsed ? 'ขยาย' : 'ย่อ', collapsed ? 'expand' : 'collapse', () => remember('qaCollapsed', collapsed ? '0' : '1')));
+    tools.append(tool(top ? 'ย้ายไปล่างซ้าย' : 'ย้ายไปบนขวา', top ? 'toBottom' : 'toTop', () => remember('qaCorner', top ? 'bottom' : 'top')));
+    head.append(ident, tools);
     p.append(head);
 
-    if (spec.mode === 'verdict') {
-      const f = el('div', (window.__qaFailOpen ? 'display:block;' : 'display:none;') + 'margin:6px 0;padding:6px;background:#fff5f5;border:1px solid #feb2b2;border-radius:4px');
-      f.id = 'qa-fail';
-      f.append(el('div', 'font-weight:600;margin-bottom:4px', 'ไม่ถูกต้องตรงไหน (ส่งถึง Claude)'));
-      const ta = el('textarea', 'width:100%;min-height:60px;font:13px sans-serif');
-      ta.value = window.__qaDraft || '';
-      ta.oninput = () => { window.__qaDraft = ta.value; };
-      f.append(ta);
-      f.append(btn('ส่ง แล้วไปเคสถัดไป', '#c53030', () => answer('fail', ta.value)));
-      p.append(f);
-    }
-    if (collapsed) return;
-
-    const section = (label, items, css) => {
-      if (!items || !items.length) return;
-      p.append(el('div', 'font-weight:600;margin-top:6px', label));
-      const ol = el('ol', 'margin:2px 0 4px 20px;padding:0;' + (css || ''));
-      items.forEach(i => ol.append(el('li', 'margin:1px 0', i)));
-      p.append(ol);
+    const list = (label, items, tag) => {
+      const box = el('div');
+      box.append(el('div', 'qa-label', label));
+      const l = el(tag);
+      items.forEach(i => l.append(el('li', '', i)));
+      box.append(l);
+      return box;
     };
-    section('ขั้นตอนที่จะทำบนจอ', spec.steps);
-    section('ที่ถูกต้อง (คาดหวัง)', spec.expect, 'color:#22543d');
-    (spec.lines || []).forEach(l => p.append(el('div', 'margin:2px 0', l)));
-
-    if (spec.checks && spec.checks.length) {
-      const t = el('table', 'border-collapse:collapse;width:100%;margin:6px 0;font-size:13px');
-      const th = document.createElement('tr');
-      ['เรื่องที่ตรวจ', 'ที่ถูกต้อง', 'ที่ระบบได้', ''].forEach(h => th.append(el('th', 'text-align:left;border-bottom:2px solid #e2c98a;padding:3px 6px;background:#f6ecd2', h)));
-      t.append(th);
-      spec.checks.forEach(c => {
-        const tr = el('tr', c.ok ? '' : 'background:#fff5f5');
-        tr.append(el('td', 'border-bottom:1px solid #eee;padding:3px 6px;vertical-align:top', c.label));
-        tr.append(el('td', 'border-bottom:1px solid #eee;padding:3px 6px;vertical-align:top;color:#22543d', c.want == null ? '' : c.want));
-        tr.append(el('td', 'border-bottom:1px solid #eee;padding:3px 6px;vertical-align:top;' + (c.ok ? '' : 'color:#c53030'), c.detail == null ? '' : c.detail));
-        tr.append(el('td', 'border-bottom:1px solid #eee;padding:3px 6px;vertical-align:top;font-size:15px', c.ok ? '✅' : '❌'));
-        t.append(tr);
+    const checkTable = () => {
+      const t = el('table', 'qa-checks');
+      const thead = el('thead');
+      const hr = el('tr');
+      ['ผล', 'เรื่องที่ตรวจ', 'ที่ถูกต้อง', 'ที่ระบบได้'].forEach(h => hr.append(el('th', '', h)));
+      thead.append(hr);
+      const tbody = el('tbody');
+      checks.forEach(c => {
+        const tr = el('tr', c.ok ? '' : 'qa-fail');
+        const result = el('td');
+        result.append(el('span', 'qa-pill ' + (c.ok ? 'pass' : 'fail'), c.ok ? 'ผ่าน' : 'ไม่ผ่าน'));
+        tr.append(result, el('td', '', c.label), el('td', '', c.want == null ? '' : String(c.want)), el('td', 'qa-got', c.detail == null ? '' : String(c.detail)));
+        tbody.append(tr);
       });
-      p.append(t);
-    }
-
-    const source = spec.source;
-    if (source) {
-      const box = el('div', 'background:#fff;border:1px solid #e2c98a;border-radius:4px;padding:6px 8px;margin:6px 0 8px');
-      box.append(el('div', 'font-weight:600;margin-bottom:4px', 'ข้อมูลต้นทาง: ' + (source.caption || '')));
+      t.append(thead, tbody);
+      return t;
+    };
+    const sourceBlock = source => {
+      const box = el('div', 'qa-source');
+      box.append(el('div', 'qa-label', 'ข้อมูลต้นทาง' + (source.caption ? ': ' + source.caption : '')));
       if (source.table) {
-        const wrap = el('div', 'overflow-x:auto');
-        const t = el('table', 'border-collapse:collapse;font:12px/1.35 monospace;white-space:nowrap');
+        const wrap = el('div', 'qa-scroll');
+        const t = el('table');
         const addRow = (cells, isHead, idx) => {
-          const tr = document.createElement('tr');
-          tr.append(el(isHead ? 'th' : 'td', 'border:1px solid #ddd;padding:2px 5px;color:#888;background:#f7f7f7', isHead ? '#' : String(idx)));
-          cells.forEach(c => tr.append(el(isHead ? 'th' : 'td', 'border:1px solid #ddd;padding:2px 5px;' + (isHead ? 'background:#f1e6c8' : '') + (c === '' ? ';background:#fdecec' : ''), c === '' ? '(ว่าง)' : c)));
+          const tr = el('tr');
+          tr.append(el(isHead ? 'th' : 'td', 'qa-idx', isHead ? '#' : String(idx)));
+          cells.forEach(c => {
+            const empty = !isHead && c === '';
+            tr.append(el(isHead ? 'th' : 'td', empty ? 'qa-empty' : '', empty ? '(ว่าง)' : c));
+          });
           t.append(tr);
         };
         source.table.forEach((r, i) => addRow(r, i === 0, i));
         if (source.more) {
-          const tr = document.createElement('tr');
-          const td = el('td', 'padding:2px 5px;color:#888', source.more);
+          const tr = el('tr');
+          const td = el('td', 'qa-more', source.more);
           td.colSpan = source.table[0].length + 1;
-          tr.append(td); t.append(tr);
+          tr.append(td);
+          t.append(tr);
         }
         if (source.lastRow) addRow(source.lastRow, false, 'สุดท้าย');
-        wrap.append(t); box.append(wrap);
+        wrap.append(t);
+        box.append(wrap);
       }
-      (source.text || []).forEach(l => box.append(el('div', 'font:12px/1.4 monospace;white-space:pre-wrap', l)));
-      p.append(box);
+      (source.text || []).forEach(l => box.append(el('p', 'qa-note', l)));
+      return box;
+    };
+
+    if (!collapsed) {
+      const body = el('div', 'qa-body');
+      if (spec.mode === 'intro') {
+        const cols = el('div', 'qa-cols');
+        if (spec.steps && spec.steps.length) cols.append(list('ขั้นตอนที่จะทำบนจอ', spec.steps, 'ol'));
+        if (spec.expect && spec.expect.length) cols.append(list('ที่ถูกต้อง', spec.expect, 'ul'));
+        body.append(cols);
+      }
+      if (checks.length) body.append(checkTable());
+      if (spec.source) body.append(sourceBlock(spec.source));
+      p.append(body);
     }
-  }, spec);
+
+    if (spec.mode === 'verdict') {
+      const f = el('div', 'qa-failbox');
+      f.id = 'qa-fail';
+      f.hidden = !window.__qaFailOpen;
+      const label = el('label', '', 'ไม่ถูกต้องตรงไหน (ส่งถึง Claude)');
+      label.htmlFor = 'qa-fail-note';
+      const ta = el('textarea');
+      ta.id = 'qa-fail-note';
+      ta.value = window.__qaDraft || '';
+      ta.oninput = () => { window.__qaDraft = ta.value; };
+      f.append(label, ta, btn('ส่ง แล้วไปเคสถัดไป', 'danger solid', () => answer('fail', ta.value)));
+      p.append(f);
+    }
+
+    const foot = el('div', 'qa-foot');
+    if (spec.mode === 'intro') {
+      foot.append(btn('ย้อน', '', () => answer('back'), 'back'), btn('ข้าม', '', () => answer('skip')),
+        btn('เริ่ม', 'primary', () => answer('start'), 'start'));
+    }
+    if (spec.mode === 'verdict') {
+      foot.append(btn('ย้อน', '', () => answer('back'), 'back'));
+      if (!spec.once) foot.append(btn('ทำซ้ำ', '', () => answer('retry'), 'retry'));
+      foot.append(btn('ไม่ถูกต้อง', 'danger', () => {
+        window.__qaFailOpen = true;
+        const f = document.getElementById('qa-fail');
+        if (f) { f.hidden = false; f.querySelector('textarea').focus(); }
+      }, 'fail'));
+      foot.append(btn('ถัดไป', 'primary', e => {
+        const b = e.currentTarget;
+        if (failed && !b.dataset.sure) {
+          b.dataset.sure = '1';
+          b.textContent = `ไม่ผ่าน ${failed} ข้อ — กดอีกครั้งถ้าผ่านจริง`;
+          return;
+        }
+        answer('next');
+      }, null, 'next'));
+    }
+    p.append(foot);
+  }, [spec, PANEL_CSS]);
 }
 
 async function reset(page) {
@@ -188,7 +331,7 @@ async function ask(page, spec) {
   }
 }
 
-// Set by ↻ ทำซ้ำ: the rerun plays at once, without asking ▶ เริ่ม again.
+// Set by ทำซ้ำ: the rerun plays at once, without asking เริ่ม again.
 let replay = false;
 
 // Before the screen plays: what is about to be tested. ข้าม / ย้อน throw Jump.
@@ -199,21 +342,21 @@ async function intro(page, tc, steps, expect, source) {
     return;
   }
   console.log('INTRO', tc);
-  const { action } = await ask(page, { mode: 'intro', title: `🔎 กำลังจะทดสอบ: ${named(tc)}`, steps, expect, source });
+  const { action } = await ask(page, { mode: 'intro', code: tc, topic: topicOf(tc), steps, expect, source });
   console.log('USER ' + action.toUpperCase(), tc);
   if (action !== 'start') throw new Jump(action);
 }
 
 // While the script plays the screen.
-async function doing(page, tc, what) {
+async function doing(page, tc) {
   await reset(page);
-  await show(page, { mode: 'doing', badge: `▶ ${tc}`, title: `▶ ${named(tc)} — กำลังเล่นจอ`, lines: [what] });
+  await show(page, { mode: 'doing', code: tc });
 }
 
 // The result: checks are { label, want, detail, ok }. ย้อน / ทำซ้ำ throw Jump.
 async function verdict(page, tc, checks, source, { once = false } = {}) {
   console.log('WAITING USER', tc);
-  const { action, note } = await ask(page, { mode: 'verdict', title: `⏸ ${named(tc)} — ตรวจบนจอ`, checks, source, once });
+  const { action, note } = await ask(page, { mode: 'verdict', code: tc, topic: topicOf(tc), checks, source, once });
   fs.appendFileSync(VERDICTS, JSON.stringify({ tc, action, note, checks }) + '\n');
   const said = action === 'next' && checks.some(c => !c.ok) ? 'OVERRIDE' : action.toUpperCase();
   console.log(action === 'fail' ? `USER FAIL ${tc} :: ${note}` : `USER ${said} ${tc}`);
