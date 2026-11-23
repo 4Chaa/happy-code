@@ -6,7 +6,7 @@
 |---|---|---|
 | `browser.js` | เปิด Chrome ค้างไว้ (persistent profile, `--remote-debugging-port`) | `QA_DIR`, `APP_URL`, `CDP_PORT`=9333, `PW_CHANNEL`=chrome |
 | `login.js` | รอ user login จนเห็น `READY_SELECTOR` (สูงสุด 20 นาที) | `APP_URL`, `READY_SELECTOR`, `CDP_PORT` |
-| `qa.js` | กล่องบนจอ (หัว = รหัสเคส + เรื่อง + สรุป "ไม่ผ่าน 1 จาก 3 ข้อ", ปุ่ม ย่อ / ย้ายมุม เป็นไอคอนเล็ก; ปุ่มตัดสินใจล่างขวา): `setTopics`, `intro` (ขั้นตอน \| ที่ถูกต้อง คู่กัน แล้วข้อมูลต้นทาง), `doing` (แค่ badge "กำลังเล่น · รหัสเคส" มุมขวาล่าง คลิกทะลุ ไม่บังจอ), `verdict` (ผล \| เรื่องที่ตรวจ \| ที่ถูกต้อง \| ที่ระบบได้, ข้อไม่ผ่านแดงทั้งแถว; `{ once: true }` ซ่อน ทำซ้ำ; มีข้อไม่ผ่านแล้วกด ถัดไป = กดสองครั้ง + `USER OVERRIDE`), `check`, `csvSource`, `Jump` | `QA_DIR` (เก็บ `user-verdicts.jsonl`) |
+| `qa.js` | กล่องบนจอ (หัว = รหัสเคส + เรื่อง + สรุป "ไม่ผ่าน 1 จาก 3 ข้อ", ปุ่ม ย่อ / ย้ายมุม เป็นไอคอนเล็ก; ลากหัวกล่องย้ายได้อิสระ จำตำแหน่งจนกดปุ่มย้ายมุม; ปุ่มตัดสินใจล่างขวา): `setTopics`, `intro` (ขั้นตอน \| ที่ถูกต้อง คู่กัน แล้วข้อมูลต้นทาง), `doing` (แค่ badge "กำลังเล่น · รหัสเคส" มุมขวาล่าง คลิกทะลุ ไม่บังจอ), `waitFor(page, tc, steps, done, { minutes, every })` (กล่องสีม่วง "รอคุณทำ" ไม่มีปุ่ม สำหรับขั้นที่ผู้ทดสอบทำนอกจอ เช่นรัน SQL บน dev; เช็ค `done` ทุก 2 วินาทีจนจริงแล้วทำต่อเอง → `true`, หมดเวลา → `false`), `verdict` (ผล \| เรื่องที่ตรวจ \| ที่ถูกต้อง \| ที่ระบบได้, ข้อไม่ผ่านแดงทั้งแถว; `{ once: true }` ซ่อน ทำซ้ำ; มีข้อไม่ผ่านแล้วกด ถัดไป = กดสองครั้ง + `USER OVERRIDE`), `check`, `csvSource`, `Jump` | `QA_DIR` (เก็บ `user-verdicts.jsonl`) |
 | `runner.js` | `run(page, cases)` — วนเคส, ย้อน / ทำซ้ำ / ข้าม | `START`, `STOP` |
 | `recorder.js` | `start(page)`, `read(page)`, `timeline(rec)` — บันทึก toast + progress ต่อ tab | — |
 | `kit.js` | เมาส์/คีย์บอร์ดแบบคน: `click`, `type`, `hover`, `showCursor` (จุดแดง). Angular + ng-select + ngx-datatable + ngx-toastr: `pick`, `options`, `selected`, `clearSelect`, `pickTypeahead`, `fieldMessage`, `toasts`, `toastKind`, `holdToast`, `dismissToasts`, `gridRows`, `column`, `nextGridPage`, `row`, `checkRow`, `searchRow`. Negative path ที่จอกันไว้ (dev build): `devCall`. API (FE = BE เท่านั้น): `trackAuth`, `api`, `errorText`. DB read-only: `db`. `shot` | `APP_URL`, `CDP_PORT`, `QA_DIR`, `HUMAN_PACE` (1), `DB_CMD`, `DB_CWD` |
@@ -14,7 +14,8 @@
 
 รัน: `node <playwright-skill>/run.js <script>` (ใส่ NODE_PATH ให้ `require('playwright')`).
 Log ที่ script พิมพ์: `BROWSER READY|CLOSED`, `LOGIN NEEDED|LOGGED IN|TIMEOUT`, `CASE n`, `INTRO`, `REPLAY`,
-`WAITING USER`, `USER NEXT|OVERRIDE|FAIL|RETRY|BACK|SKIP|START`, `RUN DONE`, `ERROR`.
+`WAITING USER`, `USER NEXT|OVERRIDE|FAIL|RETRY|BACK|SKIP|START`, `WAITING <tc> :: <สิ่งที่ผู้ทดสอบต้องทำ>`,
+`WAIT OK|TIMEOUT`, `RUN DONE`, `ERROR`.
 
 ## กับดักที่เจอจริง
 

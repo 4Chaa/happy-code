@@ -107,11 +107,15 @@ playwright) — invoke skill นั้นก่อนเพื่อหา path.
 - **หลาย tab:** `recorder.js` ในทุก tab; แยก tab ด้วยเวลาเริ่มบันทึก ไม่ใช่ลำดับ. เช็ค: tab อื่นเปลี่ยนจอเอง,
   ส่งซ้อนถูกปฏิเสธ, งานของอีก tab จบแล้ว tab นี้ไม่มีอะไรเกิดขึ้น.
 - เคสที่เขียน DB ทำซ้ำไม่ได้ด้วยข้อมูลชุดเดิม → ไฟล์ชุดใหม่ (seed ใหม่) หรือ copy ใน `$QA_DIR`.
+- **ขั้นที่ผู้ทดสอบทำนอกจอ** (รัน SQL บน dev, แก้ข้อมูลในโปรแกรมอื่น) → `Q.waitFor(page, tc, [สิ่งที่ต้องทำ + SQL เต็ม], () => K.db(...) ตรงเงื่อนไข)`
+  กล่องสีม่วงบอกสิ่งที่ต้องทำ แล้ว script ไปต่อเองเมื่อ DB เปลี่ยน. ได้ `false` (หมดเวลา) → verdict ไม่ผ่านแล้วหยุดเคส —
+  ห้ามกดปุ่มที่เขียนข้อมูลต่อ (เช่น ประมวลผล) ถ้า DB ยังไม่เป็นตามเงื่อนไข.
 
 ## 4. เล่น — background + เฝ้าเหตุการณ์ (ห้ามรอค้าง)
 1. รัน `cases.js` แบบ background (`START`/`STOP` เลือกช่วง). รอ user (login, restart, รัน DB script) → waiter
    เบื้องหลังที่เริ่มเคสต่อเองเมื่อเงื่อนไขครบ แล้วบอก user ว่ารออะไรจากเขา.
-2. Monitor log: `USER FAIL|USER OVERRIDE|USER BACK|USER RETRY|USER SKIP|RUN DONE|ERROR`.
+2. Monitor log: `USER FAIL|USER OVERRIDE|USER BACK|USER RETRY|USER SKIP|WAITING|WAIT TIMEOUT|RUN DONE|ERROR`.
+   `WAITING <tc> :: ...` → บอกผู้ทดสอบใน chat ทันทีว่าต้องทำอะไร (SQL เต็มใน code block).
 3. `USER FAIL <tc> :: <หมายเหตุ>` → ตอบทันที: bug จริง / ความเห็น / script ผิด. ผู้ทดสอบขอเปลี่ยน → ทำตาม แล้วรันเคสนั้นซ้ำ.
    `USER OVERRIDE <tc>` (กดผ่านทั้งที่มีข้อไม่ผ่าน) → ถามใน chat ทันที: check ใน script ผิด (แก้ check) หรือยอมรับ bug ไว้ก่อน.
    ห้ามนับเป็นผ่านเงียบ ๆ.

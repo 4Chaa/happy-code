@@ -8,8 +8,11 @@
 //            ถัดไป / ไม่ถูกต้อง (note, logged and printed as USER FAIL) / ทำซ้ำ / ย้อน.
 //            With a failed check, ถัดไป needs a second click and prints USER OVERRIDE (passed over a failed check).
 //            { once: true } hides ทำซ้ำ for a case that cannot run twice (it continues from state an earlier step changed).
-// The panel collapses (head + actions only) and changes corner; a note being typed survives both. ทำซ้ำ replays
-// without the intro. Answers are appended to $QA_DIR/user-verdicts.jsonl.
+// waitFor(): a step the tester does outside the screen (e.g. SQL on dev): a panel without buttons says what to do, and
+//            the script checks a condition until it holds, then goes on by itself.
+// The panel collapses (head + actions only), changes corner, and drags anywhere by its head (the place is kept until a
+// corner button sends it back); a note being typed survives all three. ทำซ้ำ replays without the intro.
+// Answers are appended to $QA_DIR/user-verdicts.jsonl.
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -123,7 +126,8 @@ async function show(page, spec) {
     }
     let p = document.getElementById('qa-panel');
     if (!p) { p = document.createElement('div'); p.id = 'qa-panel'; document.body.appendChild(p); }
-    const tones = { intro: ['#2b6cb0', '#eef5fc', '#dbe9f8', '#2b6cb0'], verdict: ['#b7791f', '#fdf6e3', '#f6e3b4', '#276749'] };
+    const tones = { intro: ['#2b6cb0', '#eef5fc', '#dbe9f8', '#2b6cb0'], verdict: ['#b7791f', '#fdf6e3', '#f6e3b4', '#276749'],
+      wait: ['#6b46c1', '#f3effc', '#e4dbf7', '#6b46c1'] };
     const [accent, tint, tintStrong, primary] = tones[spec.mode] || tones.intro;
     p.removeAttribute('style');
     p.style.setProperty('--qa-accent', accent);
@@ -194,9 +198,46 @@ async function show(page, spec) {
     }
     const tools = el('div', 'qa-tools');
     tools.append(tool(collapsed ? 'ขยาย' : 'ย่อ', collapsed ? 'expand' : 'collapse', () => remember('qaCollapsed', collapsed ? '0' : '1')));
-    tools.append(tool(top ? 'ย้ายไปล่างซ้าย' : 'ย้ายไปบนขวา', top ? 'toBottom' : 'toTop', () => remember('qaCorner', top ? 'bottom' : 'top')));
+    tools.append(tool(top ? 'ย้ายไปล่างซ้าย' : 'ย้ายไปบนขวา', top ? 'toBottom' : 'toTop', () => {
+      store.set('qaPos', '');
+      remember('qaCorner', top ? 'bottom' : 'top');
+    }));
     head.append(ident, tools);
     p.append(head);
+
+    // Drag the head anywhere so the panel never covers what the tester checks. The place is kept (qaPos) across cases
+    // and reloads until a corner button sends the panel back; it stays inside the window with the head reachable.
+    const place = (x, y) => {
+      const left = Math.round(Math.min(Math.max(0, x), Math.max(0, innerWidth - 120)));
+      const down = Math.round(Math.min(Math.max(0, y), Math.max(0, innerHeight - 56)));
+      p.style.left = left + 'px';
+      p.style.top = down + 'px';
+      p.style.right = 'auto';
+      p.style.bottom = 'auto';
+      if (!collapsed) p.style.maxHeight = `min(72vh, calc(100vh - ${down + 8}px))`;
+      return { x: left, y: down };
+    };
+    let saved = null;
+    try { saved = JSON.parse(store.get('qaPos') || 'null'); } catch { saved = null; }
+    if (saved) place(saved.x, saved.y);
+    head.style.cursor = 'move';
+    head.title = 'ลากเพื่อย้ายกล่อง';
+    head.addEventListener('pointerdown', e => {
+      if (e.button !== 0 || e.target.closest('button')) return;
+      e.preventDefault();
+      const r = p.getBoundingClientRect();
+      const dx = e.clientX - r.left;
+      const dy = e.clientY - r.top;
+      head.setPointerCapture(e.pointerId);
+      const move = ev => place(ev.clientX - dx, ev.clientY - dy);
+      const up = ev => {
+        head.removeEventListener('pointermove', move);
+        head.removeEventListener('pointerup', up);
+        store.set('qaPos', JSON.stringify(place(ev.clientX - dx, ev.clientY - dy)));
+      };
+      head.addEventListener('pointermove', move);
+      head.addEventListener('pointerup', up);
+    });
 
     const list = (label, items, tag) => {
       const box = el('div');
@@ -262,6 +303,8 @@ async function show(page, spec) {
         if (spec.expect && spec.expect.length) cols.append(list('ที่ถูกต้อง', spec.expect, 'ul'));
         body.append(cols);
       }
+      // A step the tester does outside the screen (e.g. SQL on dev): no buttons, the script goes on by itself.
+      if (spec.mode === 'wait') body.append(list('รอคุณทำ', spec.steps || [], 'ol'));
       if (checks.length) body.append(checkTable());
       if (spec.source) body.append(sourceBlock(spec.source));
       p.append(body);
@@ -353,6 +396,32 @@ async function doing(page, tc) {
   await show(page, { mode: 'doing', code: tc });
 }
 
+// A step the tester does outside the screen (e.g. SQL on dev): shows `steps` in a panel without buttons and checks
+// `done` (sync or async, e.g. a K.db query) every `every` ms, redrawing after ย่อ / ย้าย or a navigation.
+// True once done holds, false after `minutes`. Prints WAITING (what the tester must do), then WAIT OK or WAIT TIMEOUT.
+async function waitFor(page, tc, steps, done, { minutes = 20, every = 2000 } = {}) {
+  const spec = { mode: 'wait', code: tc, topic: topicOf(tc), steps: [...steps, `script ตรวจทุก ${every / 1000} วินาที แล้วทำต่อเอง`] };
+  await reset(page);
+  await show(page, spec);
+  console.log('WAITING', tc, '::', steps.join(' | '));
+  const end = Date.now() + minutes * 60000;
+  while (Date.now() < end) {
+    if (await done()) {
+      console.log('WAIT OK', tc);
+      return true;
+    }
+    const s = await page.evaluate(() => ({ r: window.__qaRedraw, has: !!document.getElementById('qa-panel') }))
+      .catch(() => ({ r: true, has: false }));
+    if (s.r || !s.has) {
+      await page.evaluate(() => { window.__qaRedraw = false; }).catch(() => {});
+      await show(page, spec).catch(() => {});
+    }
+    await page.waitForTimeout(every);
+  }
+  console.log('WAIT TIMEOUT', tc);
+  return false;
+}
+
 // The result: checks are { label, want, detail, ok }. ย้อน / ทำซ้ำ throw Jump.
 async function verdict(page, tc, checks, source, { once = false } = {}) {
   console.log('WAITING USER', tc);
@@ -366,4 +435,4 @@ async function verdict(page, tc, checks, source, { once = false } = {}) {
 
 const check = (label, want, detail, ok) => ({ label, want, detail, ok });
 
-module.exports = { setTopics, show, intro, doing, verdict, check, csvSource, Jump };
+module.exports = { setTopics, show, intro, doing, waitFor, verdict, check, csvSource, Jump };
