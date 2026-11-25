@@ -40,6 +40,8 @@ playwright) — invoke skill นั้นก่อนเพื่อหา path.
      เห็นอะไร: (ก) จอกันไว้ + script ยิง API ใส่ผลในตาราง หรือ (ข) **แนะนำ** script ฝืนผ่าน `K.devCall` ให้ FE ยิง request
      จริง แล้วผู้ทดสอบเห็น toast ของ BE บนจอ. ผลที่คาดระบุสี toast ด้วย (interceptor แยกสีตาม status เช่น 403 เหลือง,
      400 แดง — อ่านจากโค้ด interceptor). ถาม user ตอนอนุมัติตาราง ไม่ใช่ตอนเล่นไปแล้ว.
+   - **record ที่เปิดจากจอค้นหา** — เขียนค่าช่องค้นหาที่ต้องตั้ง (ปี / ภาค / ระบบ / สถานะ) ในคอลัมน์ข้อมูลทดสอบ
+     เทียบกับค่า default ของจอ (เช่น "ปี 2570 (default 2569) → D70110025"). default ไม่ตรงกับ record = ค้นไม่เจอ.
    - **จำนวนที่คาดใส่ filter ตั้งต้นของจอ** — query ที่นับแถว grid / ตัวเลือก dropdown ต้องใช้ค่า default ของช่องค้นหา
      (ระบบการศึกษา, ปี/ภาค, สถานะ) เหมือนจอ ไม่งั้นนับ record ที่จอซ่อนอยู่เกินมา.
 3. **แสดงเป็นตาราง "สรุปเคส" ใน chat** (คอลัมน์เดียวกับ template):
@@ -88,9 +90,15 @@ playwright) — invoke skill นั้นก่อนเพื่อหา path.
    ไม่ใช่ใบที่เพิ่งสร้าง") ไม่งั้นผู้ทดสอบตีตกเพราะคิดว่าเปิดผิดใบ. ขั้นที่ฝืนผ่าน `K.devCall` เขียนว่า "(script ฝืนผ่าน window.ng)".
 3. `Q.doing(...)` แล้วเล่นจอด้วย `K.click` / `K.type` / `K.pick` / `K.pickTypeahead` / `K.checkRow` / `K.searchRow`
    (เมาส์จริง ไม่ใช่ `locator.click()` ตรง). `HUMAN_PACE=0` เร็วขึ้นตอนรันซ้ำ, `2` ช้าลงตอนสาธิต.
+   **รอ response ไม่ใช่รอเวลา** — ขั้นที่ยิง request แล้วจอเปลี่ยนตามผล (เลือก dropdown ที่โหลดของต่อ, เปิด record)
+   ใช้ `K.pickAndWait(page, name, text, /url/)` หรือ `page.waitForResponse` ก่อนอ่านผล. call แรกหลัง restart API ช้าเป็นวินาที;
+   รอเวลาตายตัวแล้วอ่าน = เห็นของเก่าแล้วตีว่าระบบผิด. อ่าน state ของ component ผ่าน `K.component(page, selector)` (รอ element ก่อน).
 4. `Q.verdict(page, tc, [Q.check(เรื่อง, ที่ถูกต้อง, ที่ระบบได้, ok)], source)`.
    **หยุดเฉพาะจุดที่มีข้อความให้คนดู** (toast, ข้อความใต้ช่อง, ข้อความใน grid, การ์ด progress).
    ข้อมูลล้วนตรวจใน script แล้วใส่ผลลงตารางเดียวกัน. toast ใส่ทั้งข้อความและสี (`K.toastKind`).
+   **check อ่านสิ่งที่จอแสดง** — ช่อง dropdown อ่านด้วย `K.selected(page, name)`, grid ด้วย `K.gridRows` / `K.column`.
+   ค่าในฟอร์ม (`getRawValue()`) มีค่าได้ทั้งที่ dropdown ว่าง (list ไม่มีค่านั้น) → check ผ่านทั้งที่จอผิด.
+   ใช้ state ของ component เฉพาะข้อมูลที่จอไม่แสดง (id ภายใน, รหัสหลังชื่อ).
    ตารางมีข้อไม่ผ่านแล้วผู้ทดสอบกด ถัดไป → ต้องกดสองครั้ง และ log พิมพ์ `USER OVERRIDE` (ข้อ 4).
 - อ่านค่าใน grid ด้วยชื่อหัวคอลัมน์ (`K.column`) ห้ามใช้ตำแหน่ง. grid แบ่งหน้า → `K.nextGridPage`.
 - **dropdown ที่ผูกกัน** — หลังเปิดจอและหลังเลือกช่องต้นทาง → รอ `networkidle` แล้วอ่าน `K.selected` ซ้ำก่อนไปต่อ.
@@ -114,9 +122,12 @@ playwright) — invoke skill นั้นก่อนเพื่อหา path.
 ## 4. เล่น — background + เฝ้าเหตุการณ์ (ห้ามรอค้าง)
 1. รัน `cases.js` แบบ background (`START`/`STOP` เลือกช่วง). รอ user (login, restart, รัน DB script) → waiter
    เบื้องหลังที่เริ่มเคสต่อเองเมื่อเงื่อนไขครบ แล้วบอก user ว่ารออะไรจากเขา.
-2. Monitor log: `USER FAIL|USER OVERRIDE|USER BACK|USER RETRY|USER SKIP|WAITING|WAIT TIMEOUT|RUN DONE|ERROR`.
+2. Monitor log: `CHECK RED|USER FAIL|USER OVERRIDE|USER BACK|USER RETRY|USER SKIP|WAITING|WAIT TIMEOUT|RUN DONE|ERROR`.
    `WAITING <tc> :: ...` → บอกผู้ทดสอบใน chat ทันทีว่าต้องทำอะไร (SQL เต็มใน code block).
-3. `USER FAIL <tc> :: <หมายเหตุ>` → ตอบทันที: bug จริง / ความเห็น / script ผิด. ผู้ทดสอบขอเปลี่ยน → ทำตาม แล้วรันเคสนั้นซ้ำ.
+3. **`CHECK RED <tc>` หรือ `USER FAIL <tc>` → แก้ทันที ไม่รอผู้ทดสอบกด**: หยุด run (ข้อ 1.6) → invoke
+   `mattpocock-skills:diagnosing-bugs` (loop = Playwright script เล่นขั้นของเคสนั้นบน Chrome เดิม จับ request/response,
+   ต้องเห็นแดงก่อน) → แยกว่า script ผิด (ข้อ 4) หรือระบบผิด → ระบบผิด: test แดงที่ seam ที่ใกล้สุด → แก้ → เขียว → เล่นเคสนั้นซ้ำ
+   (`START=n`). บอกผู้ทดสอบใน chat หนึ่งบรรทัดว่ากำลังแก้อะไร. `USER FAIL` ที่เป็นความเห็น / ขอเปลี่ยน → ทำตาม แล้วรันเคสนั้นซ้ำ.
    `USER OVERRIDE <tc>` (กดผ่านทั้งที่มีข้อไม่ผ่าน) → ถามใน chat ทันที: check ใน script ผิด (แก้ check) หรือยอมรับ bug ไว้ก่อน.
    ห้ามนับเป็นผ่านเงียบ ๆ.
 4. Script ผิดเอง (selector, ตำแหน่งคอลัมน์, timeout) → บอกตรง ๆ ว่าเป็น script ไม่ใช่ระบบ แก้แล้ว **หยุด run เดิม
@@ -147,3 +158,6 @@ playwright) — invoke skill นั้นก่อนเพื่อหา path.
 - เปิด browser ก่อนตรวจว่าบัญชีทดสอบ login ได้และมีสิทธิ์ครบ (ข้อ 1.4).
 - รันใหม่โดยไม่หยุด node ของ run เก่า (ข้อ 1.6).
 - นับ `USER OVERRIDE` เป็นผ่านโดยไม่ถาม user.
+- เห็น `CHECK RED` แล้วรอผู้ทดสอบกดก่อนค่อยแก้.
+- check ที่อ่านค่าในฟอร์ม/state แทนสิ่งที่จอแสดง สำหรับค่าที่ผู้ทดสอบเห็นบนจอ.
+- อ่านผลหลังรอเวลาตายตัว แทนการรอ response ของขั้นนั้น.

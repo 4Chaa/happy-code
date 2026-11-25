@@ -301,6 +301,11 @@ path and this skill forbids it.
   NOT run a Sonar scan; the rules are the point, the scanner is not. Report both verdicts
   to the user in one short block. Option FE=BE on (step 3) → the spec pass also checks
   every FE rule has its BE rule and message, field by field.
+  **Deleting a line that looks redundant:** in event-driven code (`patchValue` / `setValue` that fire
+  `valueChanges`, subscriptions, cached lookups) the second call often exists for its *order*, not its value.
+  Trace what fires and in which order before and after the deletion, and write that trace in the self-review.
+  (ENDT01: a "redundant" `setValue(cclId)` after `patchValue` re-ran the curriculum lookup once the calendar was
+  set; deleting it left saved applications with empty lists.)
 - Multi-layer work (FE/BE): do the layers in sequence, one coherent edit set per layer,
   self-review each layer before moving to the next.
 - Derive test cases with `tdd` — cases BEFORE code, red → green → refactor. Enumerate

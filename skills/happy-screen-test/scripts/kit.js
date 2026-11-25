@@ -99,13 +99,42 @@ async function options(page, name) {
   return texts;
 }
 
-// Picks the option containing `text`, then waits for the cascade request it starts.
+// Picks the option containing `text`, then waits for the cascade request it starts. A list that loads after the screen
+// opens shows an empty panel on an early click: close it, wait, and try again (5 tries).
 async function pick(page, name, text) {
-  await click(page, ng(page, name).locator('.ng-select-container'));
-  const option = page.locator('.ng-dropdown-panel .ng-option').filter({ hasText: text }).first();
-  await option.waitFor();
-  await click(page, option);
-  await settle(page, 900);
+  for (let i = 0; i < 5; i++) {
+    await click(page, ng(page, name).locator('.ng-select-container'));
+    const option = page.locator('.ng-dropdown-panel .ng-option').filter({ hasText: text }).first();
+    if (await option.waitFor({ timeout: 5000 }).then(() => true, () => false)) {
+      await click(page, option);
+      await settle(page, 900);
+      return;
+    }
+    await page.keyboard.press('Escape');
+    await page.waitForLoadState('networkidle').catch(() => {});
+    await settle(page, 1000);
+  }
+  throw new Error(`pick: no option "${text}" in ${name}`);
+}
+
+// Picks like `pick`, then waits for the response whose URL matches `urlRegex` (the request the pick starts).
+// Waiting on the response, not on time, holds when the server is slow (e.g. the first call after an API restart).
+async function pickAndWait(page, name, text, urlRegex, timeout = 30000) {
+  const response = page.waitForResponse(r => urlRegex.test(r.url()), { timeout });
+  response.catch(() => {}); // a failed pick throws first; its pending wait must not crash the run
+  await pick(page, name, text);
+  await response;
+  await settle(page, 500);
+}
+
+// The element of a component once it is on the page (reading too early throws "Expecting instance of DOM Element").
+// Read its state in the page (Angular dev build):
+//   const lineId = await (await K.component(page, 'app-x-detail')).evaluate(el => window.ng.getComponent(el).lineId);
+// Use it for data the screen does not show; check shown values with `selected` / `gridRows`.
+async function component(page, selector, timeout = 30000) {
+  const el = page.locator(selector).first();
+  await el.waitFor({ timeout });
+  return el;
 }
 
 async function clearSelect(page, name) {
@@ -282,7 +311,8 @@ function db(sql) {
 const shot = (page, name) => page.screenshot({ path: path.join(QA_DIR, 'shots', name + '.png'), fullPage: true });
 
 module.exports = {
-  attach, settle, showCursor, click, type, hover, ng, selected, options, pick, clearSelect, pickTypeahead, fieldMessage,
+  attach, settle, showCursor, click, type, hover, ng, selected, options, pick, pickAndWait, component, clearSelect,
+  pickTypeahead, fieldMessage,
   dismissToasts, toasts, holdToast, toastKind, devCall, gridRows, column, nextGridPage, row, checkRow, searchRow,
   trackAuth, api, errorText, db, shot,
 };

@@ -6,15 +6,15 @@
 |---|---|---|
 | `browser.js` | เปิด Chrome ค้างไว้ (persistent profile, `--remote-debugging-port`) | `QA_DIR`, `APP_URL`, `CDP_PORT`=9333, `PW_CHANNEL`=chrome |
 | `login.js` | รอ user login จนเห็น `READY_SELECTOR` (สูงสุด 20 นาที) | `APP_URL`, `READY_SELECTOR`, `CDP_PORT` |
-| `qa.js` | กล่องบนจอ (หัว = รหัสเคส + เรื่อง + สรุป "ไม่ผ่าน 1 จาก 3 ข้อ", ปุ่ม ย่อ / ย้ายมุม เป็นไอคอนเล็ก; ลากหัวกล่องย้ายได้อิสระ จำตำแหน่งจนกดปุ่มย้ายมุม; ปุ่มตัดสินใจล่างขวา): `setTopics`, `intro` (ขั้นตอน \| ที่ถูกต้อง คู่กัน แล้วข้อมูลต้นทาง), `doing` (แค่ badge "กำลังเล่น · รหัสเคส" มุมขวาล่าง คลิกทะลุ ไม่บังจอ), `waitFor(page, tc, steps, done, { minutes, every })` (กล่องสีม่วง "รอคุณทำ" ไม่มีปุ่ม สำหรับขั้นที่ผู้ทดสอบทำนอกจอ เช่นรัน SQL บน dev; เช็ค `done` ทุก 2 วินาทีจนจริงแล้วทำต่อเอง → `true`, หมดเวลา → `false`), `verdict` (ผล \| เรื่องที่ตรวจ \| ที่ถูกต้อง \| ที่ระบบได้, ข้อไม่ผ่านแดงทั้งแถว; `{ once: true }` ซ่อน ทำซ้ำ; มีข้อไม่ผ่านแล้วกด ถัดไป = กดสองครั้ง + `USER OVERRIDE`), `check`, `csvSource`, `Jump` | `QA_DIR` (เก็บ `user-verdicts.jsonl`) |
+| `qa.js` | กล่องบนจอ (หัว = รหัสเคส + เรื่อง + สรุป "ไม่ผ่าน 1 จาก 3 ข้อ", ปุ่ม ย่อ / ย้ายมุม เป็นไอคอนเล็ก; ลากหัวกล่องย้ายได้อิสระ จำตำแหน่งจนกดปุ่มย้ายมุม; ปุ่มตัดสินใจล่างขวา): `setTopics`, `intro` (ขั้นตอน \| ที่ถูกต้อง คู่กัน แล้วข้อมูลต้นทาง), `doing` (แค่ badge "กำลังเล่น · รหัสเคส" มุมขวาล่าง คลิกทะลุ ไม่บังจอ), `waitFor(page, tc, steps, done, { minutes, every })` (กล่องสีม่วง "รอคุณทำ" ไม่มีปุ่ม สำหรับขั้นที่ผู้ทดสอบทำนอกจอ เช่นรัน SQL บน dev; เช็ค `done` ทุก 2 วินาทีจนจริงแล้วทำต่อเอง → `true`, หมดเวลา → `false`), `verdict` (ผล \| เรื่องที่ตรวจ \| ที่ถูกต้อง \| ที่ระบบได้, ข้อไม่ผ่านแดงทั้งแถว; `{ once: true }` ซ่อน ทำซ้ำ; มีข้อไม่ผ่าน → พิมพ์ `CHECK RED <tc> :: <ข้อ: want, got>` ก่อนเปิดกล่อง; กด ถัดไป = กดสองครั้ง + `USER OVERRIDE`), `check`, `csvSource`, `Jump` | `QA_DIR` (เก็บ `user-verdicts.jsonl`) |
 | `runner.js` | `run(page, cases)` — วนเคส, ย้อน / ทำซ้ำ / ข้าม | `START`, `STOP` |
 | `recorder.js` | `start(page)`, `read(page)`, `timeline(rec)` — บันทึก toast + progress ต่อ tab | — |
-| `kit.js` | เมาส์/คีย์บอร์ดแบบคน: `click`, `type`, `hover`, `showCursor` (จุดแดง). Angular + ng-select + ngx-datatable + ngx-toastr: `pick`, `options`, `selected`, `clearSelect`, `pickTypeahead`, `fieldMessage`, `toasts`, `toastKind`, `holdToast`, `dismissToasts`, `gridRows`, `column`, `nextGridPage`, `row`, `checkRow`, `searchRow`. Negative path ที่จอกันไว้ (dev build): `devCall`. API (FE = BE เท่านั้น): `trackAuth`, `api`, `errorText`. DB read-only: `db`. `shot` | `APP_URL`, `CDP_PORT`, `QA_DIR`, `HUMAN_PACE` (1), `DB_CMD`, `DB_CWD` |
+| `kit.js` | เมาส์/คีย์บอร์ดแบบคน: `click`, `type`, `hover`, `showCursor` (จุดแดง). Angular + ng-select + ngx-datatable + ngx-toastr: `pick` (ลองซ้ำ 5 ครั้งเมื่อ list ยังโหลดไม่เสร็จ), `pickAndWait` (เลือกแล้วรอ response ที่ระบุ), `component` (รอ element ของ component ก่อนอ่าน state), `options`, `selected`, `clearSelect`, `pickTypeahead`, `fieldMessage`, `toasts`, `toastKind`, `holdToast`, `dismissToasts`, `gridRows`, `column`, `nextGridPage`, `row`, `checkRow`, `searchRow`. Negative path ที่จอกันไว้ (dev build): `devCall`. API (FE = BE เท่านั้น): `trackAuth`, `api`, `errorText`. DB read-only: `db`. `shot` | `APP_URL`, `CDP_PORT`, `QA_DIR`, `HUMAN_PACE` (1), `DB_CMD`, `DB_CWD` |
 | `example-cases.js` | แม่แบบไฟล์เคส | `SKILL_SCRIPTS`, `FILES` |
 
 รัน: `node <playwright-skill>/run.js <script>` (ใส่ NODE_PATH ให้ `require('playwright')`).
 Log ที่ script พิมพ์: `BROWSER READY|CLOSED`, `LOGIN NEEDED|LOGGED IN|TIMEOUT`, `CASE n`, `INTRO`, `REPLAY`,
-`WAITING USER`, `USER NEXT|OVERRIDE|FAIL|RETRY|BACK|SKIP|START`, `WAITING <tc> :: <สิ่งที่ผู้ทดสอบต้องทำ>`,
+`CHECK RED`, `WAITING USER`, `USER NEXT|OVERRIDE|FAIL|RETRY|BACK|SKIP|START`, `WAITING <tc> :: <สิ่งที่ผู้ทดสอบต้องทำ>`,
 `WAIT OK|TIMEOUT`, `RUN DONE`, `ERROR`.
 
 ## กับดักที่เจอจริง
@@ -50,6 +50,10 @@ Log ที่ script พิมพ์: `BROWSER READY|CLOSED`, `LOGIN NEEDED|LOGG
 | บัญชีทดสอบ login ไม่ได้ / เมนูหรือปุ่มไม่ขึ้น | บัญชีใช้ provider อื่น (AD) หรือไม่มี profile / สิทธิ์คณะที่เคสต้องใช้ | preflight ผู้ใช้ทดสอบ (SKILL ข้อ 1.4) ก่อนเปิด browser |
 | เปิด Chrome ทดสอบแล้วหน้าว่าง / ต่อไม่ได้ | SPA ไม่ได้รัน (มีแค่ API) | preflight เปิด `APP_URL` ให้ได้ก่อน; ให้ user start เอง |
 | Chrome ถูกคลิกสองชุด / เคสเก่าเล่นซ้อนเคสใหม่ | `TaskStop` หยุด shell แต่ลูก node (`cases.js`, `login.js`) ยังรัน | หยุด node ค้างก่อนรันทุกครั้ง (Pattern ด้านล่าง) |
+| check ผ่าน แต่ dropdown บนจอว่าง | check อ่านค่าในฟอร์ม; list ไม่มีค่านั้นจอจึงแสดงว่าง | อ่าน `selected(page, name)` (ข้อความที่จอแสดง) |
+| อ่านผลแล้วได้ของเก่า ทั้งที่ระบบถูก | รอเวลาตายตัว; call แรกหลัง restart API ช้าเป็นวินาที | `pickAndWait` / `waitForResponse` ของ request ขั้นนั้น |
+| `Expecting instance of DOM Element` ตอนอ่าน `ng.getComponent` | อ่านก่อนจอ (เช่น detail หลังคลิกเลขใบ) ขึ้น | `component(page, 'app-<screen>-detail')` |
+| ค้นหา record ไม่เจอ ทั้งที่มีใน DB | ช่องค้นหาตั้ง default คนละปี / ภาคกับ record | ตั้งค่าช่องค้นหาก่อนค้น; เขียนค่าไว้ในข้อมูลทดสอบของ test plan |
 | เลือกนักศึกษาแล้วค่าหาย / ได้คนละคน | ค่า default (ปี/ภาค) โหลดทีหลังแล้วล้างช่องที่ผูกกัน | `waitForLoadState('networkidle')` หลังเปิดจอและหลังเลือกช่องต้นทาง แล้วอ่าน `selected` ซ้ำ |
 | ไม่มีกลุ่มเรียน / ตัวเลือกที่คาด | ยังไม่ได้ตั้งปี/ภาคที่ข้อมูลทดสอบอยู่ (จอใช้ default ปีอื่น) | ตั้งปี/ภาคก่อนแล้วรอ `networkidle`; เขียนปี/ภาคไว้ในขั้นตอนของ intro |
 | จำนวนแถวที่คาดเกินจากที่จอแสดง | query ไม่ใส่ filter ตั้งต้นของจอ (เช่น ระบบการศึกษา) | ใส่ค่า default ของช่องค้นหาใน query นับ |
@@ -88,5 +92,5 @@ Log ที่ script พิมพ์: `BROWSER READY|CLOSED`, `LOGIN NEEDED|LOGG
   ```powershell
   Get-CimInstance Win32_Process -Filter "Name='node.exe'" |
     Where-Object { $_.CommandLine -match 'cases\.js|login\.js' } |
-    ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+    ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
   ```

@@ -423,7 +423,10 @@ async function waitFor(page, tc, steps, done, { minutes = 20, every = 2000 } = {
 }
 
 // The result: checks are { label, want, detail, ok }. ย้อน / ทำซ้ำ throw Jump.
+// A failed check prints CHECK RED before the panel opens, so the agent starts fixing without waiting for the tester.
 async function verdict(page, tc, checks, source, { once = false } = {}) {
+  const red = checks.filter(c => !c.ok);
+  if (red.length) console.log('CHECK RED', tc, '::', red.map(c => `${c.label}: want ${c.want}, got ${c.detail}`).join(' | '));
   console.log('WAITING USER', tc);
   const { action, note } = await ask(page, { mode: 'verdict', code: tc, topic: topicOf(tc), checks, source, once });
   fs.appendFileSync(VERDICTS, JSON.stringify({ tc, action, note, checks }) + '\n');
