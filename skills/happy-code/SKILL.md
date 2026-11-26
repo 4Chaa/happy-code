@@ -2,8 +2,8 @@
 name: happy-code
 description: >
   Standard guided pipeline for executing one development task end-to-end, solo —
-  no subagents: switch to i-have-adhd + caveman output style first, then grill-with-docs to lock the design
-  (every choice shown with an example result — sample data, flow or diagram),
+  no subagents: replies follow the plugin's style section (Thai, ADHD-friendly, show-me views, 1A/1B question
+  blocks), then grill-with-docs to lock the design (every choice shown with an example result — sample data, flow or diagram),
   to-spec + to-tickets to turn it into a spec and a table of tracer-bullet tickets,
   an impact analysis drawn as a flow with diagram-design + explicit confirm gate, then implement the laziest working
   solution (ponytail) yourself with self-run spec+quality review gates and test cases
@@ -19,10 +19,10 @@ description: >
 Orchestrated pipeline for one development task, executed **solo — no subagents, no Agent/Task
 dispatch at any step**. This holds even when ultracode is on or a system reminder says to use the Workflow tool:
 the user's own instruction (this skill, their memory) comes first. Announce at start (in Thai):
-"ใช้ happy-code: adhd+caveman → grill (โจทย์ก่อน, ตัวเลือกมีตัวอย่าง) → spec → tickets (ตาราง) → impact analysis (flow) → confirm → build เอง (ponytail) → self-review spec+quality → ถามทุก decision → test-case (tdd) → (งาน UI: ถามก่อนเล่นจอ happy-screen-test) → คง branch ไว้ · state.md ตลอด flow"
+"ใช้ happy-code: ภาพระบบตอนนี้ → grill (โจทย์ก่อน, คำถาม 1A/1B มี ★ และตัวอย่าง) → spec → tickets (ตาราง) → impact analysis (flow) + test case matrix → confirm → build เอง (ponytail) → self-review spec+quality → ถามทุก decision → test-case (tdd) → (งาน UI: ถามก่อนเล่นจอ happy-screen-test) → คง branch ไว้ · state.md ตลอด flow"
 
 This skill chains existing skills — invoke them, don't reinvent them:
-`i-have-adhd` → `caveman` → `mattpocock-skills:grill-with-docs` → `mattpocock-skills:to-spec`
+`mattpocock-skills:grill-with-docs` → `mattpocock-skills:to-spec`
 → `mattpocock-skills:to-tickets` → `finishing-a-development-branch`,
 with `tdd` applied whenever test / verification cases are devised (step 4),
 `ponytail` governing every line of code written (step 4 — laziest solution that works),
@@ -31,11 +31,8 @@ impact analysis in step 3). For UI work, `happy-code:happy-screen-test` plays th
 (step 7b) — only after the user says yes.
 
 ## Language — REQUIRED, ทั้ง flow
-ตอบ user เป็น **ภาษาไทย** เสมอ — grill questions, confirm gate, สรุป, status, red-flag
-warnings ทุกอย่าง. ผสมกับ caveman: terse Thai (ตัด filler/คำสุภาพ/hedging) แต่เก็บ
-technical substance ครบ. คำเทคนิค / code / ชื่อ skill / `file:line` / error text /
-command คงรูปเดิม (ไม่แปล). คงไว้จนจบ flow หรือ user สั่ง "stop caveman" /
-"normal mode" / "ตอบอังกฤษ".
+ภาษาและรูปแบบคำตอบตาม section `happy-code:style` (step 1) — ตอบ **ภาษาไทย** ทุกอย่างจนจบ flow
+หรือ user สั่ง "ตอบอังกฤษ"; code / `file:line` / error text / command / ชื่อ skill คงรูปเดิม.
 
 ## State file — REQUIRED, ทั้ง flow
 เก็บสถานะงานไว้ที่ `.scratch/<feature-slug>/state.md` เพราะ context ถูก compact หรือ hand off ได้
@@ -44,6 +41,8 @@ command คงรูปเดิม (ไม่แปล). คงไว้จน�
 
 ```markdown
 # <feature> — state
+Ticket: ClickUp <task_id> "<ชื่อ task>"   (ไม่มี ticket → ตัดบรรทัดนี้)
+Branch: <branch> จาก <base>
 ## Tickets          | # | ticket | สถานะ (todo/doing/done) | commit |
 ## Decisions        - <วันที่> <คำตัดสินใจ> (user: "<คำพูดของ user>")
 ## Must not change  - <สิ่งที่ห้ามเปลี่ยน / source of truth จาก step 2>
@@ -56,6 +55,7 @@ command คงรูปเดิม (ไม่แปล). คงไว้จน�
 - เริ่ม flow → `git status --short` แล้วบันทึกไฟล์ที่แก้ค้างอยู่แล้วว่าเป็น "WIP ของ user" ก่อนแตะอะไร.
 - หลัง compact หรือรับงานต่อ → อ่าน `state.md` และ `git status` ก่อน. ห้ามเชื่อสรุปอย่างเดียว.
 - ไฟล์อยู่ใน `.scratch/` → ไม่ commit.
+- Ticket Cockpit (pane ของ plugin นี้, `/cockpit`) อ่านไฟล์นี้: คงบรรทัด `Ticket:` / `Branch:` และคอลัมน์ตาราง Tickets ตามแบบ, สถานะขึ้นต้นด้วย `todo` / `doing` / `done`.
 
 ## Long waits — background, never block
 อะไรที่ต้องรอนาน (build / test ชุดใหญ่, job เบื้องหลัง, import ไฟล์ใหญ่, รอ user login / restart server /
@@ -67,34 +67,17 @@ command คงรูปเดิม (ไม่แปล). คงไว้จน�
 
 ## The pipeline
 
-### 1. Output style first — REQUIRED, before anything else
-Two skills, in this order, before the grill and before any exploration:
-
-**1a. `i-have-adhd`** — load it first. It sets `disable-model-invocation: true`, so the `Skill` tool
-cannot call it — don't try. Load it the way step 2b loads `to-spec`: Glob `**/skills/i-have-adhd/SKILL.md`
-under `~/.claude/plugins/cache/` (skip `.cursor/`; several versions → the highest), Read it, and follow it
-as if invoked. Not installed → say so in one line and follow the rules below yourself. Shapes
-every response for the rest of the run: lead with the next action, number multi-step work,
-restate state across turns, no tangents, specific time estimates, visible wins.
-
-**1b. `caveman`** — then switch YOUR OWN communication to caveman style **in Thai** and
-keep it active for the entire happy-code run: drop filler / pleasantries / hedging; keep
-all technical substance exact (terms, code, file:line, errors). Honor caveman's
-auto-clarity exceptions (security warnings, irreversible-action confirmations, genuinely
-ambiguous multi-step asks).
-
-**Combined = terse Thai, action-first, numbered.** Where they pull apart, ADHD structure
-wins over caveman compression: keep the numbered steps, the state restatement, and the
-"ต่อไปทำอะไร" closing line even though they cost words — caveman then strips the words
-*inside* each of them. Never compress a multi-step instruction into one dense sentence.
-
-Both stay active until the flow ends or the user says "stop adhd mode" / "stop caveman" /
-"normal mode".
+### 1. รูปแบบคำตอบ — มาจาก plugin
+กติกาภาษา, โครงคำตอบ, ภาพเล็กแบบ show-me และรูปแบบคำถาม 1A/1B อยู่ใน section `happy-code:style`
+ที่ hook ของ plugin นี้ใส่ใน system prompt ทุก session — ไม่ต้องโหลด skill ใด.
+ไม่เห็น section นั้น (ปิด option `thaiStyle` หรือ plugin รุ่นเก่า) → ทำตามสรุปนี้เอง: ตอบไทย · บรรทัดแรกคือสิ่งที่จะทำ ·
+งานหลายขั้นใส่เลข · กลับมาทำต่อ = สรุปสถานะก่อน · ปิดด้วย "ต่อไปทำอะไร" · คำถามมีตัวเลือกใช้ block ตาม step 2.
+plugin caveman เปิดอยู่ → กระชับได้ แต่ห้ามทิ้งเลขขั้น การสรุปสถานะ และบรรทัด "ต่อไปทำอะไร".
 
 ### 2. Grill — `mattpocock-skills:grill-with-docs`
 Invoke `mattpocock-skills:grill-with-docs`. Interview the user about the task until shared understanding.
 - Explore the codebase to answer questions yourself instead of asking the user.
-- One question at a time; always give a recommended answer first.
+- ถามทุกข้อที่ตัดสินได้ตอนนี้ในรอบเดียว (ทับกติกา "ถามทีละข้อ" ของ grill-with-docs); ตัวที่แนะนำ (★) มาก่อนเสมอ.
 - Resolve every design branch and dependency before writing any code.
 
 **REQUIRED: ค้น convention ของโมดูลข้างเคียงก่อนเสนอตัวเลือก.** เรื่องที่ระบบมีของคล้ายกันอยู่แล้ว — endpoint กลางที่
@@ -102,6 +85,23 @@ Invoke `mattpocock-skills:grill-with-docs`. Interview the user about the task un
 แถวที่จองไว้ในเอกสารกลาง — grep โค้ดและ query ข้อมูลจริง (read-only) ของโมดูลพี่น้องก่อน แล้วให้ตัวเลือกที่ตรง
 convention เป็นตัวแนะนำ อ้าง `file:line` หรือแถวข้อมูล. เดาจากชื่อจอ (เช่นเสนอ program = ชื่อจอ ทั้งที่ระบบอื่นใช้
 `<MODULE>_INTERFACE`) = แนะนำผิดและ user ต้องแก้ให้.
+
+**REQUIRED: ภาพระบบตอนนี้ (2a) — ก่อนคำถามแรก.** หลังอ่านโค้ดและข้อมูลส่วนที่งานแตะ (รวม convention ข้างบน)
+วาดด้วย `diagram-design:diagram-design` ว่าตอนนี้ระบบทำงานยังไง แล้วส่งให้ user ดูก่อนเปิดรอบคำถาม:
+
+| สิ่งที่สำคัญในงาน | type |
+|---|---|
+| กติกาต่างกันระหว่างทางเข้า (สร้าง / แก้ / คัดลอก / API) | Flowchart แบบ paired traces — ไฮไลต์จุดแรกที่ต่าง |
+| request วิ่งข้าม layer (UI → API → service → DB) | Sequence |
+| โครงสร้าง / ใครเรียกใคร | Architecture |
+| ตาราง / ความสัมพันธ์ของข้อมูล | ER หรือ Database schema |
+| สถานะของเอกสาร / record | State machine |
+
+- ทุกกล่องที่อ้างโค้ดมี `file:line` จริง — อ่านก่อนวาด ห้ามเดา. จุดที่ ticket / tester บอกว่าผิด = accent (≤ 2 จุด).
+- เก็บ `.scratch/<feature-slug>/diagrams/current-<n>.html` · ส่งด้วย `SendUserFile` (`display: "render"`) ·
+  กติกาฟอนต์ไทย, self-check และการข้าม pause "confirm before drawing" ตาม step 3.
+- ใต้ภาพ: ตาราง "เห็นอะไรในภาพ → grill จะถามอะไร" แล้วเปิดรอบคำถาม.
+- ทางลัด: งาน "1 ticket, ไม่แตก" และไม่กระทบที่อื่น → call tree หรือ pseudocode ในแชตแทน HTML.
 
 **REQUIRED: งานแตะสิทธิ์ / การมองเห็นข้อมูล → ไล่ทุกจุดที่ข้อมูลโผล่ใน grill** ก่อนล็อกกติกา. แสดงเป็นตารางให้ user
 ตอบทีละแถว (กติกาที่ไม่ได้เขียนต่อแถว = user ต้องทักทีละจุดหลัง build):
@@ -118,7 +118,7 @@ convention เป็นตัวแนะนำ อ้าง `file:line` หร�
 **REQUIRED: ถามโจทย์ก่อนเสนอทางเลือก.** คำถามแรกของ grill (ก่อนคำถามที่มีตัวเลือก) ต้องล็อก
 สิ่งที่ห้ามเปลี่ยนและ source of truth ให้ได้ก่อน เช่น "ต้องคงรหัส status เดิมไหม", "ยึด db_status
 หรือยึด function", "จอเดิมต้องได้ผลเหมือนเดิมไหม". ทางเลือกที่ขัดกับคำตอบนี้ไม่ต้องเสนอ.
-- task ที่แก้ logic เดิม → ก่อนถาม อธิบาย 3–5 บรรทัดว่าโค้ดเดิมทำงานยังไงและทำไมถึงเขียนแบบนั้น
+- task ที่แก้ logic เดิม → ภาพ 2a คือคำอธิบายของเดิม; ใต้ภาพเพิ่ม 1–2 บรรทัดว่าทำไมโค้ดเดิมเขียนแบบนั้น
   (อ้าง `file:line`) เช่น ทำไม SQL เดิมต้องมี `AND` เยอะ. user เห็นภาพของเดิมก่อนจะตัดสินใจได้ถูกกว่า.
 - คำตอบเขียนลง `state.md` หัวข้อ "Must not change" และหัวข้อ Implementation Decisions ของ spec.
 
@@ -129,13 +129,15 @@ convention เป็นตัวแนะนำ อ้าง `file:line` หร�
 - **flow / ลำดับขั้นต่างกัน** → flow สั้นต่อตัวเลือก (`A → B → C`).
 - **UI / layout ต่างกัน** → mockup ASCII ของหน้าจอ.
 
-ใส่ตัวอย่างใน field `preview` ของแต่ละ option ใน `AskUserQuestion` (สั้น ≤ ~15 บรรทัด);
-ถามเป็นข้อความธรรมดา → code block ใต้แต่ละตัวเลือก.
+เขียนคำถามเป็น block ต่อข้อตาม section `happy-code:style`: `❓<เลข>` คำถาม + สถานการณ์จริงหนึ่งบรรทัด ·
+ตัวเลือก `1A` / `1B` · ★ ตัวแนะนำ · ⛔ รหัสและข้อความที่ผู้ใช้เห็นบนจอ · ✅ ข้อดี · ⚠️ ข้อเสีย · ตัวเลือกที่แค่เพิ่มกติกา
+→ block `diff` บรรทัด `+`. ตัวอย่างผลลัพธ์ (แถวข้อมูล / flow / mockup) อยู่ใต้ตัวเลือกใน block เดียวกัน (สั้น ≤ ~15 บรรทัด).
+ปิดรอบด้วย "ค่าแนะนำ: 1A 2B …" ให้ตอบด้วยปุ่ม "ใช้ค่าแนะนำ" หรือพิมพ์รหัส — ไม่ใช้ preview ของ `AskUserQuestion` / widget.
 ตัวเลือกต่างกันที่ **โครงสร้าง** (flow หลาย branch, layer, data model) จนข้อความไม่พอ →
 วาดภาพเทียบด้วย `diagram-design:diagram-design` — หนึ่งไฟล์ ตัวเลือกละ panel (A vs B),
 type ตามตาราง step 3. เก็บที่ `.scratch/<feature-slug>/diagrams/grill-<topic>.html`, แสดงแบบเดียวกับ
-step 3, ส่งภาพก่อนแล้วค่อยถาม `AskUserQuestion` (preview ย่อของแต่ละ panel). คำถามปลายเปิด
-หรือ yes/no ที่ไม่มีผลลัพธ์ต่างกันให้ดู → ไม่ต้องมี preview.
+step 3, ส่งภาพก่อนแล้วค่อยถามด้วย block (อ้าง panel A / B). คำถามปลายเปิด
+หรือ yes/no ที่ไม่มีผลลัพธ์ต่างกันให้ดู → block สั้นไม่ต้องมีตัวอย่าง.
 
 ### 2b. Spec — `mattpocock-skills:to-spec`
 Grill จบ → โหลด `to-spec` ด้วยการอ่านไฟล์ตรง ๆ แล้วทำตามเหมือน invoke. skill นี้ตั้ง
@@ -177,7 +179,7 @@ Grill จบ → โหลด `to-spec` ด้วยการอ่านไฟ�
   ค่าค้นหาหายตอนกลับจากหน้า detail);
 - แก้ไม่เกิน 1 layer และไม่เกินประมาณ 3 ไฟล์;
 - ไม่แตะ shared code, API contract หรือ DB schema;
-- ไม่มีทางเลือกที่ user ต้องตัดสินใจ (มี → ถามด้วย `AskUserQuestion` ก่อนแล้วค่อยเข้า lane).
+- ไม่มีทางเลือกที่ user ต้องตัดสินใจ (มี → ถามด้วย block 1A/1B ก่อนแล้วค่อยเข้า lane).
 
 Flow: หา root cause (อ่านโค้ด + repro) → test แดง (unit test หรือ script ตาม "Verification
 recipes" ใน step 4) → แก้ → test เขียว + ตรวจบนจอ → รายงานสาเหตุ (`file:line`), สิ่งที่แก้ และผลตรวจ
@@ -199,7 +201,7 @@ radius with grep/Glob yourself, don't guess. Cover both:
   ตอนเลือก design — ไม่ใช่รอ user ทัก.
 
 **โค้ดของทีม/module อื่น** (เช่นงาน EN ต้องแตะ service ของ FN): ห้ามแก้เองโดยไม่ถาม. ถามด้วย
-`AskUserQuestion` ก่อน build ว่าจะ (ก) ทำแค่ฝั่งตัวเอง + เขียนส่งต่อ (README/diagram: ฝั่งเราเตรียมอะไรไว้แล้ว
+block 1A/1B ก่อน build ว่าจะ (ก) ทำแค่ฝั่งตัวเอง + เขียนส่งต่อ (README/diagram: ฝั่งเราเตรียมอะไรไว้แล้ว
 ทีมนั้นต้องแก้อะไร ที่ไหน) หรือ (ข) แก้ข้ามทีมในงานนี้. ไม่รู้ว่าใครเป็นเจ้าของ → ถือว่าเป็นของทีมอื่น.
 ถ้าเปลี่ยนการเรียกข้ามทีมเป็น event: ฝั่งที่ประกาศ event เป็นเจ้าของ contract ของ event; ฝั่งเรา
 เพิ่มได้แค่ตัวรับ และของเดิมที่ทีมนั้นยังเรียกให้ใช้ `[Obsolete]` ชี้ทางใหม่แทนการลบ/เปลี่ยนชื่อ.
@@ -234,15 +236,34 @@ outside the task = say so in one line.
 - **ponytail escape hatch:** task "1 ticket, ไม่แตก" + zero impact นอก task → flow ข้อความ
   บรรทัดเดียวใน chat พอ (`A → B → C`), ไม่ต้องเปิด diagram-design.
 
-**Think about testing here too — part of the analysis, not deferred to step 4.** While
-mapping the blast radius, enumerate the test/verification strategy: what proves the change
-works, what would FAIL if the logic regressed (happy path, originally-reported case,
-boundary/edge cases), and HOW each gets checked (unit test, DB query, manual run). Note
-what's hard/impossible to test and why. Fold this into the confirm summary so the user
-signs off on the test plan, not just the code plan.
+**Test case matrix — REQUIRED, part of the analysis, not deferred to step 4.** ไล่ครบทุกเลนส์ขณะหา blast radius;
+เลนส์ที่ไม่เกี่ยวกับงาน → เขียน `ไม่เกี่ยว: <เหตุผล>` ห้ามข้ามเงียบ:
+1. **กติกา** — ทุกกติกาที่งานเพิ่มหรือแตะ ทั้ง BE (validator, handler, DB constraint / function) และ FE (required,
+   disabled, hidden, filter, mask) พร้อม `file:line`.
+2. **ทางเข้า** — ทุกทางที่ข้อมูลเข้าหรือเปลี่ยน: สร้าง, แก้, คัดลอก, import, bulk, เรียก API ตรง, job. "แก้" แยกตามสถานะแถว
+   (ใหม่ / แก้ / ลบ / แถวเดิมที่ไม่แตะ) และแถวหลักกับแถวลูก. ถาม: ทุกทางเรียกกติกานี้ไหม · ทางพี่น้องกรองแถวแบบเดียวกันไหม.
+3. **สถานะข้อมูล** — null / ว่าง, ค่าขอบ, "เหมือนแต่ต่าง" (ค่าเดียวกันคนละ key ย่อย), เปลี่ยนหลังบันทึก (ย้าย / ปิดใช้งาน /
+   ยังไม่ยืนยัน), หลายแถวต่อ key, ข้อมูลของ scope อื่น, แถวของ record ตัวเอง, id ที่ไม่มีจริง, ข้อมูลเก่าที่ผิดกติกาใหม่.
+4. **ข้อมูลบนจอ BE=FE** — ทุกช่องหรือรายการที่ดึงจาก master / lookup / status เทียบ 3 จุด: FE แสดงหรือกรอง ↔
+   BE API ที่ให้รายการ ↔ BE ตอนบันทึก. เงื่อนไข: active, scope / สิทธิ์ (บริษัท / หน่วยงาน / สาขา), ช่วงวันที่หรือรอบ,
+   parent → child, สถานะ, soft delete, default filter ของจอค้นหา, limit / sort — รวมค่าที่บันทึกไว้แล้วแต่ตอนนี้ใช้ไม่ได้
+   (inactive, นอกสิทธิ์) ตอน view / แก้ / คัดลอก. จุดที่ไม่ตรงกัน = เคส: เรียก API ด้วยค่าที่จอซ่อน · เปิดแก้ record ที่ถือค่า
+   inactive · คัดลอกจาก / ไปขอบเขตที่ปิดแล้ว · ค่านอกสิทธิ์ได้ error อะไร ข้อความและสีอะไร.
+5. **FE vs BE รายกติกา** สองทาง — BE หลวมกว่า FE, FE เข้มกว่า BE · option FE=BE on → ข้อความต้องตรงกัน.
+6. **คนอ่านต่อ** — module / report / export / print อื่นที่อ่านข้อมูลนี้ใช้นิยามเดียวกันไหม (query read-only).
+7. **ลำดับ error** และผิดหลายข้อใน request เดียว · หลาย tab / หลายคนแก้พร้อมกัน (บันทึกเป็นความเสี่ยง).
+8. **สิทธิ์** — ทุกแถวของตารางจุดที่ข้อมูลโผล่ (step 2) มีเคส.
+9. **ข้อความ / label** มีครบทุก env · วันที่ เวลา โซนเวลา ปฏิทิน (เช่น พ.ศ. / ค.ศ.).
+10. **mutation check** — ทุกกติกา: ปิดชั่วคราวแล้ว test ของกติกานั้นต้องแดง (ทำตอน step 4).
+11. **ช่องว่าง** — ข้อมูล dev ไม่พอให้ทดสอบ → เสนอ seed script ให้ user รัน ไม่ทิ้งเงียบ.
+
+ผลลัพธ์: `.scratch/<feature-slug>/test-matrix.html` (CSS เดียวกับ impact) คอลัมน์ กติกา · ทางเข้า · สถานะข้อมูล · FE ·
+BE list · BE save · เคส · ครอบด้วย (unit / SQL dev / จอ / ช่องว่าง) → ส่ง `SendUserFile` render + สรุปในแชตเป็นจำนวนต่อเลนส์
+และรายการช่องว่าง พร้อมบอกว่าอะไรทดสอบยากหรือไม่ได้และเพราะอะไร. ทางลัด: quick-fix lane หรือ "1 ticket, ไม่แตก"
+ที่ไม่กระทบที่อื่น → matrix ย่อในแชต (เลนส์ 1–4).
 
 **Option FE=BE — ถามครั้งเดียวต่อ run, เฉพาะงานที่มี validation ทั้ง FE และ BE** (บางโปรเจคไม่ใช้):
-`AskUserQuestion` "ให้ FE กับ BE ตรวจ field เดียวกันด้วยข้อความเดียวกันไหม?" — **on**: BE ครอบทุก rule ที่ FE
+ถามด้วย block "ให้ FE กับ BE ตรวจ field เดียวกันด้วยข้อความเดียวกันไหม?" — **on**: BE ครอบทุก rule ที่ FE
 บังคับ (required, รูปแบบ, ขนาด) ใช้ข้อความตาม convention ของระบบ (เช่น ใต้ช่อง = ข้อความสั้น, toast = ระบุชื่อช่อง)
 และทดสอบ error path ของจอจริง (interceptor ที่ toast แล้วกลืน error ทำให้ error callback ไม่ทำงาน);
 **off**: ข้าม. บันทึกที่ `state.md` → Options แล้วใช้ทั้ง run.
@@ -251,8 +272,8 @@ signs off on the test plan, not just the code plan.
 code differently from the surrounding pattern, it goes in the confirm summary, not as a
 surprise in the diff.
 
-Then summarize the locked plan (code + test strategy + any deviations + impact diagram) in one tight block
-and wait for an "ok"/confirm. No code before this gate.
+Then summarize the locked plan (code + test case matrix + any deviations + impact diagram) in one tight block
+and wait for an "ok"/confirm — the user approves the impact and the matrix together. No code before this gate.
 
 ### 3b. Decision changed after the confirm gate
 User เปลี่ยนการตัดสินใจหรือเพิ่ม scope หลัง confirm (เช่น "ต้อง 403 ไม่ใช่ 400", "เช็คทุก action
@@ -284,7 +305,7 @@ path and this skill forbids it.
   - one method = one job, name states the job. Long handler doing fetch + validate +
     map + save → split by job into small private methods.
   - no duplicated blocks — extract on the 3rd occurrence (rule of three), not the 2nd.
-  - no magic numbers/strings (const, or `su_parameter` in this repo), no dead code,
+  - no magic numbers/strings (const, or the project's parameter / config table), no dead code,
     no unused vars/params/imports, no commented-out code, no empty `catch` (handle or
     rethrow — never swallow).
   - prefer LINQ / stdlib over hand-rolled loops — fewer lines AND lower complexity.
@@ -304,11 +325,12 @@ path and this skill forbids it.
   **Deleting a line that looks redundant:** in event-driven code (`patchValue` / `setValue` that fire
   `valueChanges`, subscriptions, cached lookups) the second call often exists for its *order*, not its value.
   Trace what fires and in which order before and after the deletion, and write that trace in the self-review.
-  (ENDT01: a "redundant" `setValue(cclId)` after `patchValue` re-ran the curriculum lookup once the calendar was
-  set; deleting it left saved applications with empty lists.)
+  (Example: a "redundant" `setValue(id)` after `patchValue` re-ran a dependent lookup once its parent field was
+  set; deleting it left saved records with empty dropdown lists.)
 - Multi-layer work (FE/BE): do the layers in sequence, one coherent edit set per layer,
   self-review each layer before moving to the next.
-- Derive test cases with `tdd` — cases BEFORE code, red → green → refactor. Enumerate
+- Derive test cases with `tdd` from the step-3 test case matrix (its unit rows first) — cases BEFORE code,
+  red → green → refactor, then the mutation check per rule (lens 10). Enumerate
   the cases that PROVE the change works AND that would FAIL if the logic regressed:
   happy path, the originally-reported case, boundary / edge cases (empty, single vs
   many, null, duplicates, out-of-range). Write them first and watch them go RED, then
@@ -326,12 +348,11 @@ path and this skill forbids it.
   | ข้อความบนจอ, flow หลายจอ / หลาย tab, FE กับ BE ต้องได้ข้อความเดียวกัน | `happy-code:happy-screen-test` — ถาม user ก่อน (step 7b) แล้วเล่น test plan บน Chrome ให้ user ตรวจเอง |
 
   dev server ต้อง rebuild ก่อนวัด → retry จนเห็นค่าใหม่. ห้ามสรุปจากรอบที่ยังเป็นโค้ดเก่า.
-- Verify honestly at the end. **BE**: `dotnet build`. **FE (Angular)**: do NOT run
-  `ng build` / `npm run build*` — too slow. Typecheck only:
-  `npx tsc --noEmit -p Web/spa/src/tsconfig.app.json` (catches `.ts` errors, not
-  Angular template errors — that's the speed tradeoff; specs per the SPA memory if
-  the change warrants). Report real failures vs environmental ones (e.g. file
-  locks); never claim green when it isn't.
+- Verify honestly at the end with the project's own build / typecheck commands (read them from CLAUDE.md,
+  memory or the CI config — e.g. .NET `dotnet build`; Angular `npx tsc --noEmit -p <the app's tsconfig>`).
+  Do NOT run a full FE production build (`ng build` / `npm run build*`) — too slow; a typecheck misses template
+  errors, which is the speed tradeoff, so run the specs the project has when the change warrants. Report real
+  failures vs environmental ones (e.g. file locks); never claim green when it isn't.
 
 ### 5. Write better than the codebase — your call
 The surrounding code is the **default**, not the ceiling. Copying an existing slice keeps
@@ -342,9 +363,9 @@ wins — and you say which you chose and why, in one line.
 the next agent, navigate by pattern. Deviating costs them.
 
 **Deviate when the existing pattern is actually harmful here.** Worth improving on:
-- a correctness or security hole in the pattern you'd be copying (missing `_user.Company`
-  filter, unparameterized SQL, swallowed exception, missing `ICommand` marker so the write
-  isn't transactional, missing null guard);
+- a correctness or security hole in the pattern you'd be copying (missing tenant / company
+  filter, unparameterized SQL, swallowed exception, a write that is not inside a transaction,
+  missing null guard);
 - an N+1 / repeated query / obvious O(n²) where a single query or a lookup is the same
   amount of code;
 - copy-paste that would become the 3rd occurrence — extract instead;
@@ -368,8 +389,8 @@ correctness payoff. That is over-engineering wearing a quality costume — ponyt
   Don't fix it, don't stall on it.
 
 ### 6. Ask back on every real decision
-Whenever something needs a decision the USER owns, STOP and ask (AskUserQuestion),
-recommended option first. Triggers:
+Whenever something needs a decision the USER owns, STOP and ask with the question block
+(step 2 format: 1A/1B, ★ recommended first, answer by button or typed codes). Triggers:
 - a design/scope choice with genuine alternatives;
 - an unexpected fix needed beyond the stated task;
 - intermingled or unexpected working-tree changes — do NOT silently mix; ask whose
@@ -384,7 +405,7 @@ Never guess on a user-owned decision; never proceed past one.
   committed by mistake → say so, offer to keep or undo, never rewrite history unasked.
 - Atomic commit per task. Stage only that task's files.
 - When a task's changes sit in files that also hold user WIP (or another session's work),
-  ask ONCE per run with `AskUserQuestion`:
+  ask ONCE per run with a question block:
   - **แยก (แนะนำ)** — stage at HUNK level (e.g. `git apply --cached` on a hunk-filtered patch).
     WIP re-indents the whole file → build the index blob from `HEAD` + your edits only
     (`git show HEAD:<file>` → apply your edits → `git hash-object -w` → `git update-index --cacheinfo`).
@@ -398,7 +419,7 @@ Never guess on a user-owned decision; never proceed past one.
 
 ### 7b. ทดสอบบนจอ — ถามก่อนเสมอ
 งานแตะ UI (จอ, ข้อความ, validation, import/export, job ที่จอรอผล) และ ticket ครบแล้ว → ถามด้วย
-`AskUserQuestion` หนึ่งครั้ง: "เล่น manual test บนจอด้วย happy-screen-test ไหม?" ตัวเลือก:
+block หนึ่งครั้ง: "เล่น manual test บนจอด้วย happy-screen-test ไหม?" ตัวเลือก:
 - **เล่นเลย (แนะนำ)** — invoke `happy-code:happy-screen-test`. skill นั้นสร้าง manual test plan ให้ถ้ายังไม่มี
   และแสดงตารางสรุปเคสให้อนุมัติก่อนเล่นจอเสมอ.
 - **ข้าม** — บันทึกใน `state.md` แล้วไป step 8.
@@ -442,11 +463,11 @@ remaining tasks.
 - Commit before the user has reviewed that ticket's diff and said to commit.
 - Edit another team's / module's code without asking first (step 3).
 - Reply to the user in English — Thai-only this flow.
-- Run the flow without loading `i-have-adhd` (Read its SKILL.md — the Skill tool cannot call it) then `caveman` at step 1.
-- Let caveman crush ADHD structure — no wall-of-text multi-step answers, no dropped
-  "ต่อไปทำอะไร" line.
+- Drop the reply shape to save words — no wall-of-text multi-step answers, no dropped
+  "ต่อไปทำอะไร" line (step 1).
 - Skip `to-spec` / `to-tickets` after the grill — เว้น task เล็กที่ประกาศไว้ว่า "1 ticket, ไม่แตก"
   หรืองานที่เข้า quick-fix lane (step 2d) ครบทุกเงื่อนไข.
+- เปิดคำถามแรกของ grill ก่อนส่งภาพระบบตอนนี้ (2a) — เว้นทางลัดงานเล็ก.
 - เสนอทางเลือกก่อนล็อกว่าอะไรห้ามเปลี่ยน / source of truth (step 2).
 - เสนอทางเลือกก่อนค้น convention ของโมดูลข้างเคียงทั้งในโค้ดและในข้อมูล (step 2).
 - งานแตะสิทธิ์ / การมองเห็นข้อมูล แต่ไม่ได้ไล่ตารางจุดที่ข้อมูลโผล่ใน grill (step 2).
@@ -457,10 +478,12 @@ remaining tasks.
 - Implement before the step-3 confirm gate.
 - Reach the confirm gate without an impact analysis — blast radius (own program AND
   shared/other-people's code) must be reported with แนวทาง before "ok".
+- Reach the confirm gate without the test case matrix (step 3), skip a lens without `ไม่เกี่ยว: <เหตุผล>`, or
+  write a screen test plan whose cases are not the matrix's "จอ" rows.
 - Report the impact analysis without a flow diagram (`diagram-design`) — เว้น escape hatch
   "1 ticket + zero impact" ที่ใช้ flow ข้อความบรรทัดเดียว.
 - Ask a grill question with choices but no example of each choice's result (sample data /
-  flow / mockup / diagram).
+  flow / mockup / diagram), or outside the 1A/1B block format (`AskUserQuestion` preview, widget).
 - Skip the two-stage self-review, or run quality before spec passes.
 - Proceed past a user-owned decision by guessing.
 - Ship over-engineered / speculative / scaffolded-for-later code — violates `ponytail`
@@ -468,7 +491,7 @@ remaining tasks.
 - Ship a Sonar-dirty method — complexity > 15, nesting > 3, duplicated blocks, magic
   values, dead code, empty catch. Equally: split methods preemptively when no rule trips.
 - Copy a broken pattern (missing company filter, unparameterized SQL, swallowed exception,
-  missing `ICommand`) just because the neighbouring file does it — step 5 says fix it here.
+  a write outside a transaction) just because the neighbouring file does it — step 5 says fix it here.
 - Deviate from the codebase pattern for taste, or refactor code outside the blast radius.
 - Commit intermingled / unrelated / user-WIP changes together without the user's once-per-run
   answer (step 7).
@@ -477,5 +500,5 @@ remaining tasks.
 - Block the session on a long wait (`sleep`, foreground polling) instead of background + monitor.
 - Claim done without deriving test cases via `tdd` (esp. the originally-reported case
   + edge cases) for any non-trivial change, or ship a test that never went red.
-- Claim build/tests green without actually verifying (FE = `tsc --noEmit`, never a
-  slow `ng build`).
+- Claim build/tests green without actually verifying with the project's own build / typecheck
+  commands (FE: typecheck, never a slow full production build).

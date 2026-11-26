@@ -25,8 +25,9 @@ playwright) — invoke skill นั้นก่อนเพื่อหา path.
 ## 0. Manual test plan — REQUIRED ก่อนเล่นจอ
 ไม่มี test plan = ไม่เล่นจอ.
 1. หา `docs/test-plans/TEST-PLAN-<SCREEN>-*.md` ของงาน.
-2. **ไม่มี → สร้างให้** จาก [TEST-PLAN-TEMPLATE.md](TEST-PLAN-TEMPLATE.md): อ่าน spec / ticket / diff ของงาน
-   แล้วเขียนเคสครบ — happy path, เคสที่ ticket แจ้ง, ข้อความ error แต่ละแบบ, ขอบ (ว่าง, ซ้ำ, เกินขนาด, สิทธิ์),
+2. **ไม่มี → สร้างให้** จาก [TEST-PLAN-TEMPLATE.md](TEST-PLAN-TEMPLATE.md): เคสมาจากแถวที่ครอบด้วย "จอ" ใน
+   `.scratch/<feature-slug>/test-matrix.html` ของ happy-code step 3 (ไม่มี matrix → ทำ matrix ก่อนตามเลนส์ของ step นั้น)
+   แล้วเติมให้ครบ — happy path, เคสที่ ticket แจ้ง, ข้อความ error แต่ละแบบ, ขอบ (ว่าง, ซ้ำ, เกินขนาด, สิทธิ์),
    หลาย tab ถ้ามี job. ข้อมูลทดสอบ (เช่นไฟล์ CSV) เก็บใน `docs/test-plans/<SCREEN>/` + script สร้างไฟล์ถ้าต้องใช้ id
    ที่ไม่ซ้ำ; ค่าใน dev ที่อ้างถึง (ปฏิทิน, ผู้ใช้, รหัส) ดึงจาก query read-only ไม่เดา. ใช้ skill `test` ช่วยได้.
    - **ผลที่ถูกต้องมาจากกฎในโค้ด ไม่ใช่ความเข้าใจเอง** — ก่อนเขียนผลที่คาดของแต่ละเคส ให้ grep method / rule

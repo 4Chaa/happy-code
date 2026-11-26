@@ -55,7 +55,8 @@ template เดียวใช้ทุก source ต่างแค่ช่อ
 - **metadata ของ source** — ClickUp: custom fields ที่มีค่า (Customer, Issue Type, System Module …) · GitHub: labels, milestone, linked PR
 - **สิ่งที่ ticket ขอให้ทำ** — สังเคราะห์จาก description + comments รวมกัน
 - งานย่อยที่มีอยู่แล้ว (subtask / task list ใน issue)
-- **สิ่งที่ยังไม่ชัด / ไม่มีในติ๊กเก็ต** — ข้อนี้สำคัญที่สุด ให้ user เติมก่อนเริ่ม
+- **สิ่งที่ยังไม่ชัด / ไม่มีในติ๊กเก็ต** — ข้อนี้สำคัญที่สุด ให้ user เติมก่อนเริ่ม · เขียนเป็นคำถาม block
+  แบบ grill ของ happy-code (`❓` + สถานการณ์, `1A` / `1B`, ★ ค่าแนะนำ) ให้ตอบด้วยปุ่ม "ใช้ค่าแนะนำ" หรือพิมพ์รหัส
 
 ถาม "อ่านถูกไหม ตกอะไรไหม" แล้วรอ ok เดินหน้าโดยไม่ยืนยัน = grill ผิดทางทั้งรอบ
 
