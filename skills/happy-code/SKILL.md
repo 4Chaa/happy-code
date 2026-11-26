@@ -103,6 +103,13 @@ convention เป็นตัวแนะนำ อ้าง `file:line` หร�
 - ใต้ภาพ: ตาราง "เห็นอะไรในภาพ → grill จะถามอะไร" แล้วเปิดรอบคำถาม.
 - ทางลัด: งาน "1 ticket, ไม่แตก" และไม่กระทบที่อื่น → call tree หรือ pseudocode ในแชตแทน HTML.
 
+**REQUIRED: ห้ามเชื่อ codebase เดิม — โค้ดเดิมคือหลักฐาน ไม่ใช่คำตอบ.** ใช้ตั้งแต่อ่านโค้ดเพื่อวาด 2a จนจบงาน:
+- พฤติกรรมเดิม ≠ requirement: ตรวจกับ ticket / spec / ข้อมูลจริงก่อนยึดตาม. ขัดกัน → ถามใน grill.
+- ชื่อ, comment, label, ชื่อ column อาจไม่ตรงกับที่โค้ดทำ — อ่าน logic จริงแล้วอ้าง `file:line`.
+- FE กับ BE อาจไม่ตรงกัน — ตรวจทั้งสองฝั่ง (เลนส์ FE vs BE ใน matrix step 3).
+- เงื่อนไขในจอหนึ่งไม่ใช่กติกาของระบบ — หาว่าที่อื่นใช้กติกาเดียวกันไหมก่อนลอก.
+- เจอโค้ดเดิมที่น่าจะผิด → ชี้ในภาพ 2a (accent) และถามใน grill. ห้ามแก้เงียบ ห้ามลอกต่อเงียบ.
+
 **REQUIRED: งานแตะสิทธิ์ / การมองเห็นข้อมูล → ไล่ทุกจุดที่ข้อมูลโผล่ใน grill** ก่อนล็อกกติกา. แสดงเป็นตารางให้ user
 ตอบทีละแถว (กติกาที่ไม่ได้เขียนต่อแถว = user ต้องทักทีละจุดหลัง build):
 
@@ -271,11 +278,20 @@ BE list · BE save · เคส · ครอบด้วย (unit / SQL dev / �
 และทดสอบ error path ของจอจริง (interceptor ที่ toast แล้วกลืน error ทำให้ error callback ไม่ทำงาน);
 **off**: ข้าม. บันทึกที่ `state.md` → Options แล้วใช้ทั้ง run.
 
-**Flag any deviate-from-codebase call here too** (step 5) — if you intend to write the new
-code differently from the surrounding pattern, it goes in the confirm summary, not as a
-surprise in the diff.
+**REQUIRED: ตรวจวิธีเขียน code — `mattpocock-skills:improve-codebase-architecture` → ทางเลือกให้ user เลือก.**
+skill นี้ตั้ง `disable-model-invocation` → อ่าน `SKILL.md` ตรง ๆ แบบ step 2b (`<dir ของ grill-with-docs>/../improve-codebase-architecture/SKILL.md`
+ก่อน แล้วค่อย Glob ใน cache) แล้วทำตาม แต่จำกัดขอบเขต:
+- ตรวจเฉพาะโค้ดใน blast radius ที่งานนี้จะแตะ ไม่ scan ทั้ง repo; ใช้ศัพท์ของ skill (shallow / deep module, seam).
+- ไล่ pattern ที่จะลอกด้วยกติกา step 5 (ช่องโหว่, N+1, copy-paste ครั้งที่ 3, Sonar, ชื่อที่ชวนเข้าใจผิด).
+- เจอวิธีที่ดีกว่าหรือเหมาะกว่าเดิม → ถามเป็น block 1A/1B: ตัวเลือก "ตามแบบเดิม" + วิธีที่ดีกว่า 1–2 แบบ ★ ตัวแนะนำ
+  แต่ละตัวมีโค้ดตัวอย่างสั้น ๆ หรือ `diff` ของจุดที่ต่าง, ✅ ข้อดี, ⚠️ ข้อเสีย (รวมไฟล์ / ทีมที่กระทบ).
+- ทำ HTML report ของ skill ตามเดิม (โครงสร้างตอนนี้ vs วิธีที่เสนอ ให้เห็นภาพ) เก็บ
+  `.scratch/<feature-slug>/architecture.html` → `SendUserFile` (`display: "render"`) ก่อนถาม block;
+  ข้ามแค่รอบ grill ยาวของ skill — การเลือกทำผ่าน block ในแชต.
+- ไม่เจออะไรที่คุ้มเปลี่ยน → หนึ่งบรรทัด "ตรวจวิธีเขียนแล้ว: ตามแบบเดิม เพราะ …".
+- คำตอบลง `state.md` → Decisions; step 5 เขียนตามที่ user เลือก. ทางลัด: quick-fix lane → ข้ามได้ บอกหนึ่งบรรทัด.
 
-Then summarize the locked plan (code + test case matrix + any deviations + impact diagram) in one tight block
+Then summarize the locked plan (code + test case matrix + chosen way of writing + impact diagram) in one tight block
 and wait for an "ok"/confirm — the user approves the impact and the matrix together. No code before this gate.
 
 ### 3b. Decision changed after the confirm gate
@@ -357,10 +373,12 @@ path and this skill forbids it.
   errors, which is the speed tradeoff, so run the specs the project has when the change warrants. Report real
   failures vs environmental ones (e.g. file locks); never claim green when it isn't.
 
-### 5. Write better than the codebase — your call
+### 5. Write better than the codebase — the user picks, from step 3's options
 The surrounding code is the **default**, not the ceiling. Copying an existing slice keeps
-things consistent; copying its flaws ships the flaws again. You decide, per case, which
-wins — and you say which you chose and why, in one line.
+things consistent; copying its flaws ships the flaws again. The architecture check in step 3
+offers the better ways as 1A/1B choices; write the one the user picked. A spot that only shows
+up while writing → same rules below, and anything beyond a one-line local fix goes back to the
+user as a block (step 6).
 
 **Default: follow the codebase pattern.** Consistency is real value — the next dev, and
 the next agent, navigate by pattern. Deviating costs them.
@@ -496,6 +514,9 @@ remaining tasks.
 - Copy a broken pattern (missing company filter, unparameterized SQL, swallowed exception,
   a write outside a transaction) just because the neighbouring file does it — step 5 says fix it here.
 - Deviate from the codebase pattern for taste, or refactor code outside the blast radius.
+- Treat existing behaviour, names or comments as the requirement without checking ticket / spec / data (step 2a).
+- Reach the confirm gate without the architecture check of the blast radius, or pick a better way of
+  writing for the user instead of offering it as a 1A/1B choice (step 3).
 - Commit intermingled / unrelated / user-WIP changes together without the user's once-per-run
   answer (step 7).
 - Open a PR the user did not ask for, or merge one (step 8).
