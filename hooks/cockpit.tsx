@@ -105,11 +105,15 @@ async function show($: EngineInterface, path: string | undefined) {
 }
 
 // session.start and turn.complete are hooked once for the plugin, in register.ts, which calls these two.
-export async function startCockpit($: EngineInterface) {
+export async function declareCockpit($: EngineInterface) {
   await $.command.register({
     name: 'cockpit',
     description: 'Ticket Cockpit: happy-code ticket, phase and tracer tickets from .scratch/*/state.md',
   })
+}
+
+export async function startCockpit($: EngineInterface) {
+  await declareCockpit($)
   const found = await discover($).catch(() => undefined)
   await show($, found?.path).catch(() => undefined)
   if (found?.isOnBranch) await $.ui.open(OPEN).catch(() => undefined)
