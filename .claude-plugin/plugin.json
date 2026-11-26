@@ -1,6 +1,6 @@
 {
   "name": "happy-code",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "description": "Guided solo pipeline for one development task end-to-end — grill, spec, tracer-bullet tickets, impact analysis, confirm gate, laziest working implementation, self-review — plus skills to create a ClickUp ticket, to pick up an existing ticket from ClickUp, GitHub or elsewhere, and to play a manual UI test plan on a visible browser with an on-screen check panel, a Ticket Cockpit pane beside the chat that shows the task in progress, and a Screen-Test Board pane with every test case's latest verdict. Replies in Thai through a switchable reply-style section (ADHD-friendly shape, show-me views, 1A/1B question blocks).",
   "author": {
     "name": "aphichit-k",
