@@ -63,8 +63,9 @@ typed codes such as `1A 2B`. Turn it off with the plugin option `thaiStyle` (`/c
 Google Chrome installed; its scripts live in `skills/happy-screen-test/scripts/`.
 
 `to-spec` and `to-tickets` are `disable-model-invocation`, so the Skill tool can't load them.
-At step 2b/2c `/happy-code` reads their `SKILL.md` straight from the plugin cache
-(`~/.claude/plugins/cache/*/mattpocock-skills/`) and follows it — no need to type them yourself.
+At step 2b/2c `/happy-code` reads their `SKILL.md` straight from the folder next to `grill-with-docs` (a CLI install
+or a plugin the desktop app syncs), else from the plugin cache (`~/.claude/plugins/cache/*/mattpocock-skills/`), and
+follows it — no need to type them yourself.
 
 ## License
 

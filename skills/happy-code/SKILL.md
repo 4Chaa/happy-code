@@ -142,8 +142,11 @@ step 3, ส่งภาพก่อนแล้วค่อยถามด้ว
 ### 2b. Spec — `mattpocock-skills:to-spec`
 Grill จบ → โหลด `to-spec` ด้วยการอ่านไฟล์ตรง ๆ แล้วทำตามเหมือน invoke. skill นี้ตั้ง
 `disable-model-invocation: true` → Skill tool เรียกไม่ได้ ไม่ต้องลอง:
-1. Glob `*/mattpocock-skills/*/skills/engineering/to-spec/SKILL.md` ใน `~/.claude/plugins/cache/`
-   — เจอหลาย version → ใช้ version สูงสุด.
+1. หาไฟล์ตามลำดับ ใช้ที่แรกที่เจอ:
+   - ข้าง `grill-with-docs` ที่โหลดใน step 2: หัวของมันบอก `Base directory for this skill: <dir>` →
+     `<dir>/../to-spec/SKILL.md` (ใช้ได้ทั้ง plugin ที่ติดตั้งด้วย CLI และที่แอป desktop sync มา)
+   - Glob `*/mattpocock-skills/*/skills/engineering/to-spec/SKILL.md` ใน `~/.claude/plugins/cache/`
+     — เจอหลาย version → ใช้ version สูงสุด.
 2. Read ไฟล์นั้นแล้วทำตาม instruction ในไฟล์.
 3. หาไม่เจอ → บอก user หนึ่งบรรทัดว่าไม่ได้ติดตั้ง `mattpocock-skills` แล้วเขียน spec ตาม template ด้านล่างเอง.
 
